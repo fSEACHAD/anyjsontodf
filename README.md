@@ -1,43 +1,43 @@
-:
-# anyjsontodf
 
-Transforms a JSON file to a pandas dataframe (Python)
+
+
+# Transforms a JSON file to a pandas dataframe (Python)
 
 Usage example:
 
-import anyjsontodf as jd
+    import anyjsontodf as jd
 
-# import json library
 
-import json
 
-# load json file
+    import json
 
-filename = "myjsonfile.json"
 
-JSON = None
 
-try:
+    filename = "myjsonfile.json"
 
-    with open(filename, "r") as json_file:
-    
-        res = json.load(json_file)
-        
-        JSON = res    
-        
-except Exception as e:
+    JSON = None
 
-        print(f"The file {filename} cannot be read: {e}")   
+    try:
 
-df = jd.jsontodf(JSON, verbose = jd.VERBOSE_REDUCED) # VERBOSE_REDUCED shows you the progress in terms of regs added to the dataframe
+        with open(filename, "r") as json_file:
 
-print(f"The DF obtained has the shape {df.shape}") # shows the shape of the df obtained
-        
-excel_filename = "MyJson.xlsx"
+            res = json.load(json_file)
 
-tab = "data"
+            JSON = res    
 
-jd.saveToExcel(df, excel_filename, tab) # a helper function to save the df as EXCEL is included in the package
+    except Exception as e:
+
+            print(f"The file {filename} cannot be read: {e}")   
+
+    df = jd.jsontodf(JSON, verbose = jd.VERBOSE_REDUCED) # VERBOSE_REDUCED shows you the progress in terms of regs added to the dataframe
+
+    print(f"The DF obtained has the shape {df.shape}") # shows the shape of the df obtained
+
+    excel_filename = "MyJson.xlsx"
+
+    tab = "data"
+
+    jd.saveToExcel(df, excel_filename, tab) # a helper function to save the df as EXCEL is included in the package
 
 You can read an article in Medium about this software in: 
 

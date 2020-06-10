@@ -17,16 +17,23 @@ filename = "myjsonfile.json"
 JSON = None
 
 try:
+
     with open(filename, "r") as json_file:
+    
         res = json.load(json_file)
+        
         JSON = res    
+        
 except Exception as e:
+
         print(f"The file {filename} cannot be read: {e}")   
 
 df = jd.jsontodf(JSON, verbose = jd.VERBOSE_REDUCED) # VERBOSE_REDUCED shows you the progress in terms of regs added to the dataframe
+
 print(f"The DF obtained has the shape {df.shape}") # shows the shape of the df obtained
         
 excel_filename = "MyJson.xlsx"
+
 tab = "data"
 
 jd.saveToExcel(df, excel_filename, tab) # a helper function to save the df as EXCEL is included in the package

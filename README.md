@@ -1,4 +1,5 @@
 # anyjsontodf
+
 Transforms a JSON file to a pandas dataframe (Python)
 
 Usage example:
@@ -6,11 +7,15 @@ Usage example:
 import anyjsontodf as jd
 
 # import json library
+
 import json
 
 # load json file
+
 filename = "myjsonfile.json"
+
 JSON = None
+
 try:
     with open(filename, "r") as json_file:
         res = json.load(json_file)

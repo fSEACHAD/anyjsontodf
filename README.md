@@ -39,7 +39,7 @@ Usage example:
 
     jd.saveToExcel(df, excel_filename, tab) # a helper function to save the df as EXCEL is included in the package
 
-You can read an article in Medium about this software in: 
+You can read an article in Medium about this software in: https://medium.com/@fernando.garcia.varela/dancing-with-the-dictionary-transforming-any-json-to-pandas-3328b49269d0
 
 The package is provided as is. No free paid support provided. You can send any feedback (greatly appreciated) to fernando.garcia.varela@seachad.com
 

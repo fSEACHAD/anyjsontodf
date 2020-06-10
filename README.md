@@ -9,7 +9,7 @@ import anyjsontodf as jd
 import json
 
 # load json file
-filename = "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/G_users.json"
+filename = "myjsonfile.json"
 JSON = None
 try:
     with open(filename, "r") as json_file:

@@ -1492,7 +1492,8 @@ def getMaxDeepLevelOfLevel4(element_list, list_of_begin_end_block_pointer, list_
         
         end_busqueda = -1
         
-      
+        last_level_seen = -1      
+        last_level_seen_element = -1
         # PASO 1: busco desde los los elementos que me han llegado (son punteros a niveles 4)
         for x in list_possible_elements[block]:
             last_level_seen = -1
@@ -1916,6 +1917,26 @@ def testUnorderedlists():
     print(a == b)
     print(_unorderedListsAreEqual(a,b))
 
+# =============================================================================
+# Devuelve todos los elementos de un bloque con un nivel concreto (el del elemento que llega)
+# =============================================================================
+def getElementsInBlockByLevel(element_list, list_of_begin_end_block_pointer, E):
+    
+    list_of_elements = []
+    
+    block = element_list[E]["B"]
+    level = element_list[E]["L"]
+    
+    begin = list_of_begin_end_block_pointer[block][0]
+    end = list_of_begin_end_block_pointer[block][1]+1
+    for l in range(begin, end): # rastreamos todos los elementos del bloque
+        element = element_list[l]
+        if element["L"] == level:
+            list_of_elements.append(l)
+    return list_of_elements
+        
+
+
 # --- REG ----------------------------------------------------------------------
 
 # =============================================================================
@@ -2239,13 +2260,13 @@ def createReg(element_list,
               deep_level = None, 
               l_registro = [], # contiene los punteros a los elementos
 # XXX: 202006.001 - incluyo una referencia a los registros que han sido procesados             
-              l_processed_SB = [], # SB que han sido procesados, si no está aquí, hay que procesarlo
+              l_processed_SB = [], # SB que han sido procesados, si no está aquí, hay que procesarlo, elimina recursividad infinta
 # 202006.001              
               formateo = "", 
               traza = False, 
               calledAsRecursive = False, # entramos en la función en modo recursivo o no (impacta en el campo deep_level)
               filename_traza = "kk.txt",
-              search_method = None,
+              search_method = None, # controla si nos hemos de quedar en LINK DIRECT o vamos a hacer también la búsqueda en elemento LEAF (listas al mismo nivel)
               contador = -1
               ):
     
@@ -2298,6 +2319,10 @@ def createReg(element_list,
 
 # XXX: 202006.001 CSP Facturación devuelve columnas vacías
 
+    list_processed_subblocks = [] # sólo tiene sentido si en el bloque que procesamos sólo tiene elementos de nivel 2, aunque tenga varios SB. En este caso devolvemos todos los SB que tiene el bloque para que createDFFromLeafs no procese el resto de SB y vuelque registros duplicados
+
+
+    # esto es sólo para notificar los subloques cuando estoy pidiendo la traza
     l_subblock = []
     for l in registro:
         l_SB = element_list[l]["SB"]
@@ -2319,11 +2344,24 @@ def createReg(element_list,
     # if SB in l_subblock:
     #     return registro        
 
-    if SB in processed_SB:
+    if SB in processed_SB: # si el subbloque ya ha sido procesado nos vamos, así evitamos recursividad infinta
         return registro        
     else:
         processed_SB.append(SB) # notifico que este SB lo procesamos
  
+    # 20200611 - configuration_machine presenta un tipo de JSON que no había visto hasta ahora, todos los elementos de un bloque son L == 2
+    # añadimos esto cuando sólo hay elementos con nivel 2 en el bloque
+    if calledAsRecursive == False and L == 2: # OJO! Circunstancia especial, nos están llamando desde createDFFromLeafs y nos encontramos directamente con un level 2, todos los elementos 2 del bloque componen el registro
+        registro = getElementsInBlockByLevel(element_list, list_of_begin_end_block_pointer, E = index)
+        # lo añado como registro completo
+        LIST_REGISTROS.append(registro.copy())
+        # quiero devolver todos los SB de dotos los elementos ya que sólo hay nivel 2 en este B
+        for i in registro:
+            SB = element_list[i]["SB"]
+            if not SB in list_processed_subblocks:
+                list_processed_subblocks.append(SB)
+        return LIST_REGISTROS.copy(), list_processed_subblocks            
+    
     if L == 2:
         return registro    
     
@@ -2391,7 +2429,7 @@ def createReg(element_list,
                         print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT (Before) MANDAMOS EL INDEX {index}", filename_traza)                   
                         l_registro = registro.copy()                  
                         # index = l_list_elements[0]
-                        registro = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, l_processed_SB = processed_SB, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza, search_method = SEARCH_METHOD_LINKDIRECT, contador = contador) 
+                        registro, list_of_SB = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, l_processed_SB = processed_SB, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza, search_method = SEARCH_METHOD_LINKDIRECT, contador = contador) 
                         
                         # incrementamos lo que nos llega a nuestro registro original
                         for indice in registro:
@@ -2464,7 +2502,7 @@ def createReg(element_list,
                         print_f(f"{FORMATEO}ELEMENTS: LF SAME LEVEL (Before) MANDAMOS EL INDEX {index}", filename_traza)
         
                     # index = l_list_elements[0]
-                    registro = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, l_processed_SB = processed_SB, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza, search_method = SEARCH_METHOD_TOTAL, contador = contador) 
+                    registro, list_of_SB = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, l_processed_SB = processed_SB, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza, search_method = SEARCH_METHOD_TOTAL, contador = contador) 
                     registro = copia_local_registro.copy()           
 
                     if traza:
@@ -2505,7 +2543,7 @@ def createReg(element_list,
             LIST_REGISTROS.append(registro.copy())
 
     
-    return LIST_REGISTROS.copy()
+    return LIST_REGISTROS.copy(), list_processed_subblocks # esta última lista normalmente irá en vacío. Sólo se llena cuando un Bloque sólo tiene registro de L == 2, y lo devolvemos para que no siga pidiendo SB y duplique registros
 
 
 # =============================================================================
@@ -2610,53 +2648,55 @@ def createDFFromLeafs(element_list, df_columns, list_of_begin_end_block_pointer,
 
     # rastreo los subloques de los elementos leaf (realmente un leaf es un subbloque entero y todos sus elementos)
     df_list = []
+    list_processed_subblocks = {}
     for block in range(0, len(subblock_leaf_list)):
         for subblock in subblock_leaf_list[block]:
-            l_list_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block, subblock)
-            # cojo el primer elemento de todos los que comparten el subblock
-            index = l_list_elements[0]
-            if traza:
-                print_f(f"*******************************************************************************************", filename_traza)            
-                print_f(f"createDFFromLeafs TRABAJAMOS EL ELEMENTO: {index}", filename_traza)
-                print_f(f"*******************************************************************************************", filename_traza)            
-            
-           
-            # vaciamos la lista acumulada de registros
-            LIST_REGISTROS.clear()
-            LIST_REGISTROS = createReg(element_list, list_of_begin_end_block_pointer, index, l_processed_SB = [], traza = traza, calledAsRecursive = False, filename_traza = filename_traza, search_method = SEARCH_METHOD_TOTAL)
-            
-            for registro in LIST_REGISTROS:
-            
+            if not subblock in list_processed_subblocks:
+                l_list_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block, subblock)
+                # cojo el primer elemento de todos los que comparten el subblock
+                index = l_list_elements[0]
                 if traza:
                     print_f(f"*******************************************************************************************", filename_traza)            
-                    print_f(f"createDFFromLeafs TOTAL ELEMENTS-REGISTRO: {index} {registro}", filename_traza)
-                    t_SB = []
-                    for e in registro:
-                        if not element_list[e]["SB"] in t_SB:
-                            t_SB.append(element_list[e]["SB"])
-                    print_f(f"createDFFromLeafs TOTAL ELEMENTS-REGISTRO (SB): {index} {t_SB}", filename_traza)
+                    print_f(f"createDFFromLeafs TRABAJAMOS EL ELEMENTO: {index}", filename_traza)
                     print_f(f"*******************************************************************************************", filename_traza)            
-                        
                 
+               
+                # vaciamos la lista acumulada de registros
+                LIST_REGISTROS.clear()
+                LIST_REGISTROS, list_processed_subblocks = createReg(element_list, list_of_begin_end_block_pointer, index, l_processed_SB = [], traza = traza, calledAsRecursive = False, filename_traza = filename_traza, search_method = SEARCH_METHOD_TOTAL)
                 
+                for registro in LIST_REGISTROS:
                 
-                
-                list_of_elements = []
-                for n in registro:
-                    e = element_list[n]
-                    list_of_elements.append(e)
-                
-# rastreamos el registro quitando el que tenga como columna una que esté como columna vacía
-                list_of_elements = [] # contiene la lista de elementos limpia (al principio hacía un pop en registro, pero mofifica la lista a medida que la rastreamos y produce errores)
-                for e in registro:
-                    if column_to_ignore in element_list[e]["key"]:
-                        # print(f"ELIMINADO")
-                        # borramos el elemento
-                        continue
-                    else:
-                        list_of_elements.append(e)
+                    if traza:
+                        print_f(f"*******************************************************************************************", filename_traza)            
+                        print_f(f"createDFFromLeafs TOTAL ELEMENTS-REGISTRO: {index} {registro}", filename_traza)
+                        t_SB = []
+                        for e in registro:
+                            if not element_list[e]["SB"] in t_SB:
+                                t_SB.append(element_list[e]["SB"])
+                        print_f(f"createDFFromLeafs TOTAL ELEMENTS-REGISTRO (SB): {index} {t_SB}", filename_traza)
+                        print_f(f"*******************************************************************************************", filename_traza)            
                             
-                df_list.append(list_of_elements)
+                    
+                    
+                    
+                    
+                    list_of_elements = []
+                    for n in registro:
+                        e = element_list[n]
+                        list_of_elements.append(e)
+                    
+    # rastreamos el registro quitando el que tenga como columna una que esté como columna vacía
+                    list_of_elements = [] # contiene la lista de elementos limpia (al principio hacía un pop en registro, pero mofifica la lista a medida que la rastreamos y produce errores)
+                    for e in registro:
+                        if column_to_ignore in element_list[e]["key"]:
+                            # print(f"ELIMINADO")
+                            # borramos el elemento
+                            continue
+                        else:
+                            list_of_elements.append(e)
+                                
+                    df_list.append(list_of_elements)
             
             # # número de registros (filas)
             # len(df_list)
@@ -2862,7 +2902,7 @@ def jsontodf(JSON, # JSON to flatten
 
 
     # imprimo los elementos para chequear que lo ha hecho bien
-    filename_traza = None
+    filename_traza = f"{filename}_TRAZA.txt"
     if extended_info:
         output = "\n\n{filename} ----------- key:\tvalue\tB:SB:\t-->L FD LD D LE *LCID* --- ADC FADC -- E LF FLF\n\n"
         print_f(output,  f"{filename}.txt", initializeFile = True)
@@ -2870,7 +2910,7 @@ def jsontodf(JSON, # JSON to flatten
         # _printElementList(element_list, f"{filename}.txt", infoleaf = True, list_of_begin_end_block_pointer = list_of_begin_end_block_pointer) # si queremos indicador de LEAR hay que enviarlo
         # detectamos los leaf de cada nivel
         # leaf_elements_in_block, subblock_leaf_list = detectLeafByLevel(element_list, list_of_begin_end_block_pointer, list_max_level_per_block)
-        filename_traza = f"{filename}_TRAZA.txt"
+        # filename_traza = f"{filename}_TRAZA.txt"
        
     
     df = createDFFromLeafs(element_list, df_columns, list_of_begin_end_block_pointer, traza = extended_info, filename_traza = filename_traza)
@@ -2953,7 +2993,12 @@ def depurar():
                 {
                  "path" : "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/M_RoleDefinitions_Aggregated_MOD.json",
                  "type" : FILE            
-                }                    
+                },
+        "configuration_machine" : 
+                {
+                 "path" : "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/configuration_machine.json",
+                 "type" : FILE            
+                }     
                 
         }
 
@@ -3009,7 +3054,9 @@ def MontyPython():
     lista_ejecucion = ["G_SScores","G_users","M_RoleDefinitions_Aggregated","CSPFacturacion", "CSPProducts"]
     # lista_ejecucion = ["M_RoleDefinitions_Aggregated"]    
     
-    lista_ejecucion = ["G_users"]
+    # lista_ejecucion = ["configuration_machine"]
+    # lista_ejecucion = ["G_users"]
+    
 # G_SScores    
 # G_users
 # M_RoleDefinitions_Aggregated

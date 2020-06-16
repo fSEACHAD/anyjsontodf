@@ -37,7 +37,9 @@ v1
         filename_1 - a la hora de crear el dataframe estoy enviando más elementos que columnas... (OK)
     admite listas vacías
     admite listas que contienen, además de diccionarios, elementos 
-        
+
+v2
+    checked with "configuration_machine", "G_SScores","G_users","M_RoleDefinitions_Aggregated","CSPFacturacion", "CSPProducts"        
 
 """
 

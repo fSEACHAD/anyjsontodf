@@ -198,8 +198,8 @@ apano = False
 
 conta_empty = -1
 contador = -1
-
-
+B_SB_prefix = ""
+# level_B_SB_prefix = []
 # pJSONtoDF()
 
 def JSONelements_(
@@ -208,6 +208,7 @@ def JSONelements_(
         level = 0, # nivel de profundidad al que se encuentra el elemento
         columns_list = {}, # diccionario de columnas (luego saco los valores únicos para la lista de columnas final)
         prefix = "", # prefijo que voy arrastando para crear el nombre de la columna calificado (así permito nombres de columnas duplicados en diferentes profundidades)
+        B_SB_prefix = "",
         list_count = 0, # contador de lista
         list_count_in_dictionary = 0, # identificador de lista dentro del diccionario (una lista sólo puede existir dentro de un diccionario, nunca dentro de otra lista)
         father_dict = 0, # nivel de diccionario anterior (para búsqueda horizontal) - esto elimina colisiones entre codificación de elementos que se encuentren a mismo nivel y diccionario, pero en diferente número
@@ -228,13 +229,15 @@ def JSONelements_(
     
     # vamos a conseguir una ristra de títulos
     global count_element_absolute
-    global level_prefix, level_code, level_dict
+    global level_prefix, level_code, level_dict, b_sb_prefix, level_B_SB_prefix
     global clave_valor, element_list, count_element_absolute    
     global absolute_dict_count
     global gSB_T, max_gSB_T
     global gLCID, max_gLCID
     
     level_prefix[level] = prefix # voy guardando los prefijos de nombre de columna por nivel
+    level_B_SB_prefix[level] = B_SB_prefix
+
     level_code[level] = count_element 
     
     if initialize == True: # es la primera ejecución, limpio el diccionario con el nombre de todas las columnas decoradas por nivel
@@ -272,15 +275,21 @@ def JSONelements_(
                 sumar = 1 # incremento el nivel de profundidad
                 
                 # LCID = prior_LCID
-                
 
                 #     LCID = prior_LCID
                 if isinstance(i, dict):                
                     absolute_dict_count += 1  # incremento el contador absoluto de diccionarios
                     dict_in_level += 1 # incremento el contador de diccionarios dentro del nivel en que me encuentro (LCID)
+                    # if item == "EMPTY_dict": # si es un diccionario FAKE no incremento el SB
+                    #     gSB_T -= 1
                 
                 gSB_T += 1 # aumento el identificador de subbloque
                 max_gSB_T = gSB_T
+                
+                # 20200614
+                local_B_SB_prefix = level_B_SB_prefix[level]                
+                B_SB_prefix = f"{local_B_SB_prefix}"                
+                #å 20200614
                 
                 if tipo(i) == 3: # es un elemento
                     # gSB_T -= 1 # vuelvo a dejarlo como antes                    
@@ -296,6 +305,7 @@ def JSONelements_(
                               level = level+sumar, 
                               columns_list = columns_list,
                               prefix = prefix, 
+                              B_SB_prefix = B_SB_prefix,
                               list_count = list_count, 
                               # list_count_in_dictionary = list_count_in_dictionary, # identificador de lista dentro del diccionario (una lista sólo puede existir dentro de un diccionario, nunca dentro de otra lista)
                               
@@ -307,29 +317,11 @@ def JSONelements_(
                               SB_T = gSB_T,
                               LCID = LCID,
                               prior_LCID = prior_LCID)
-                
-            # if tipo(i) == 3: # el siguiente elemento es un elemento (no lista ni diccionario?)
-            #     sumar = 1
-            #     count_element += 1
-            #     count_element_absolute +=1       
-                
-            #     JSONelements_(
-            #                   item = i, 
-            #                   level = level+sumar, 
-            #                   columns_list = columns_list, 
-            #                   prefix = prefix, 
-            #                   list_count = list_count, 
-            #                   father_dict = father_dict, 
-            #                   dict_in_level = dict_in_level, 
-            #                   dict_count = dict_count, 
-            #                   count_element = count_element,
-            #                   father_absolute_dictionary = father_absolute_dictionary,
-            #                   SB_T = SB_T)                
-                
              
     elif isinstance(item, dict):
 
-        local_prefix = level_prefix[level]     
+        local_prefix = level_prefix[level]    
+        local_B_SB_prefix = level_B_SB_prefix[level]
         
         # guardo esta información para que el elemento FAKE que creo tenga la misma información que el resto de elementos que dependen de este diccionario, sin que la lista que viene cambie la información
         mem_father_dict = father_dict
@@ -350,12 +342,13 @@ def JSONelements_(
                 count_element += 1 # contador de elementos en el nivel
                 count_element_absolute +=1 # contador absoluto de elementos
                 prefix = f"{local_prefix}"
+                B_SB_prefix = f"{local_B_SB_prefix}"
                 # LCID = prior_LCID         
 
 # =============================================================================
 # LIST
 # =============================================================================
-                
+            code_SB_T = gSB_T    
             if tipo(v) == 1: # es un elemento list?
                 
                 #dict_count += 1
@@ -374,13 +367,15 @@ def JSONelements_(
                     absolute_dict_count = mem_dict_ADC
                     count_element += 1 # contador de elementos en el nivel
                     count_element_absolute +=1 # contador absoluto de elementos
-                    prefix = f"{local_prefix}"               
+                    prefix = f"{local_prefix}" 
+                    # B_SB_prefix = B_SB_prefix
                     # le añado un element "EMPTY" para notificar que llega una lista, así siempre me aseguro que el primer elemento de un bloque NO es una lista y comienza con un L == 2
-                    JSONelements_(clave = "EMPTY", 
+                    JSONelements_(clave = "EMPTY_list", 
                                   item = "", 
                                   level = level+sumar, 
                                   columns_list = columns_list, 
                                   prefix = prefix, 
+                                  B_SB_prefix = B_SB_prefix,
                                   list_count = list_count, 
                                   # list_count_in_dictionary = list_count_in_dictionary + 1,
                                   
@@ -404,6 +399,7 @@ def JSONelements_(
                 SB_T = gSB_T
                 father_dict = dict_in_level               
                 prefix = f"{local_prefix}.{k}"
+                B_SB_prefix = f"{local_B_SB_prefix}.{code_SB_T}"
                 # list_count_in_dictionary +=1
                 # msntengo el LCID, pero guardándome enviar, para este diccionario, siempre el mismo, no el absoluto
 
@@ -416,19 +412,21 @@ def JSONelements_(
 
                 # dict_in_level += 1                
                 absolute_dict_count += 1
-                father_dict = dict_in_level                 
+                father_dict = dict_in_level   
+                B_SB_prefix = f"{local_B_SB_prefix}.{SB_T}"                
                 # dict_count += 1 # incremento el contador absoluto de diccionarios   
                 # incremento el contador de Subbloques, pero guardándome enviar, para este diccionario, siempre el mismo, no el absoluto
                 gSB_T = max_gSB_T +1
                 SB_T = gSB_T # OJO!!! añadido para que todos los subbloques sean diferentes
 
                 prefix = f"{local_prefix}.{k}"
+
                 sumar = 0 # un diccionario NO aumenta el nivel
                 # LCID = prior_LCID
 
 # APAÑO -------------------------------------------------------------------------------------------    
                 # creo un elemento "FAKE"
-             
+            
                 if apano:
                     count_element += 1 # contador de elementos en el nivel
                     count_element_absolute +=1 # contador absoluto de elementos
@@ -437,11 +435,12 @@ def JSONelements_(
                         aditional = 1 # tengo que garantizar que el niveñ con el que califico al elemento FAKE es par (si viene de lista y diccionario, sólo le habrá sumado uno al nivel y será impar)
                     # prefix = f"{local_prefix}"               
                     # le añado un element "EMPTY" para notificar que llega una lista, así siempre me aseguro que el primer elemento de un bloque NO es una lista y comienza con un L == 2
-                    JSONelements_(clave = "EMPTY", 
+                    JSONelements_(clave = "EMPTY_dict", 
                                   item = "", 
                                   level = level+sumar+aditional, 
                                   columns_list = columns_list, 
                                   prefix = f"{local_prefix}", 
+                                  B_SB_prefix = B_SB_prefix,
                                   list_count = list_count, 
                                   # list_count_in_dictionary = list_count_in_dictionary + 1,
                                   
@@ -450,10 +449,11 @@ def JSONelements_(
                                   dict_count = dict_count, 
                                   count_element = count_element,
                                   father_absolute_dictionary = father_absolute_dictionary,
-                                  SB_T = gSB_T,
+                                  SB_T = SB_T,
                                   LCID = LCID,
                                   prior_LCID = prior_LCID)
-
+                    
+                    # SB_T = code_SB_T # un diccionario FAKE no debería aumentar el número de SB
 # APAÑO ------------------------------------------------------------------------------------------- 
 
 
@@ -464,6 +464,7 @@ def JSONelements_(
                           level = level+sumar, 
                           columns_list = columns_list, 
                           prefix = prefix, 
+                          B_SB_prefix = B_SB_prefix,
                           list_count = list_count, 
                           # list_count_in_dictionary = list_count_in_dictionary + 1,
                           
@@ -484,6 +485,7 @@ def JSONelements_(
         
         if not prefix == "": 
             prefix = f"{prefix}.{clave}"
+            B_SB_prefix = f"{B_SB_prefix}.{SB_T}"
             l_prefix = prefix
             l_prefix = quitar_punto(l_prefix)
 
@@ -498,9 +500,12 @@ def JSONelements_(
         val = item
         if val == None:
             val = ""
+            
+
         element_code = {
             "key" : l_prefix, # nombre de la columna
             "value" : val, # valor del item
+            "PBSB" : get_B_SB(B_SB_prefix), # sigue la codificación B (block) SB (subblock arrastrado)
             "B" : block, # block (número de diccionario o elementos de primer nivel en cualquier elemento de la lista del JSON)
             "SB" : SB_T, # subblock - group of elements that forms a "slice" of a register   
             # "SB_T" : SB_T, # subbloque temporal
@@ -641,15 +646,29 @@ def _printElementListByListOfIndex(element_list, element_list_index ):
         element_list_result.append(element)
     _printElementList(element_list_result)
 
-
-
-
+# =============================================================================
+# Convierte la cadena recibida de subbloques, en una lista de subbloques con índices enteros
+# =============================================================================
+def get_B_SB(res):
+    s = res
+    res = s.split(".")
+    
+    # si res tiene algún valor a '' lo quitamos
+    if '' in res:
+        vacio = res.index('')
+        del res[vacio]
+    
+    results = [int(x) for x in res]
+    
+    return results
     
 # =============================================================================
 # Muestra toda la información de un element
 # =============================================================================
 def elementToString(leaf):
-    output = f"\t{leaf['key'][:65]:65} :\t {str(leaf['value'])[:20]:>20} \t[{leaf['B']:>3}].{leaf['SB']:>3}\t-->{leaf['L']:>3}.[{leaf['FD']:>3}].({leaf['LD']:>3}).{leaf['D']:>3}.{leaf['LE']:>3} *{leaf['LCID']:>3}*--- {leaf['ADC']:>3}.{leaf['FADC']:>3} -- {leaf['E']:>3} {leaf['LF']:>3} {leaf['FLF']:>3}"
+    # output = f"\t{leaf['key'][:65]:65} :\t {str(leaf['value'])[:20]:>20} \t[{leaf['B']:>3}].{leaf['SB']:>3}\t-->{leaf['L']:>3}.[{leaf['FD']:>3}].({leaf['LD']:>3}).{leaf['D']:>3}.{leaf['LE']:>3} *{leaf['LCID']:>3}*--- {leaf['ADC']:>3}.{leaf['FADC']:>3} -- {leaf['E']:>3} {leaf['LF']:>3} {leaf['FLF']:>3}"
+    
+    output = f"\t{leaf['key'][:65]:65} :\t {str(leaf['PBSB'])[:20]:>20} \t[{leaf['B']:>3}].{leaf['SB']:>3}\t-->{leaf['L']:>3}.[{leaf['FD']:>3}].({leaf['LD']:>3}).{leaf['D']:>3}.{leaf['LE']:>3} *{leaf['LCID']:>3}*--- {leaf['ADC']:>3}.{leaf['FADC']:>3} -- {leaf['E']:>3} {leaf['LF']:>3} {leaf['FLF']:>3}"
     return output
 
 # =============================================================================
@@ -731,7 +750,7 @@ def markFinalLEAVES(element_list, list_of_begin_end_block_pointer):
     # print(f"{list_final_FLF} {list_elements_max_deep} {list_LCID_max_deep_per_block}")  
 
     # finalmente marco todos los elementos FLF
-    markFinalFLFs(element_list, list_of_begin_end_block_pointer, list_final_FLF, list_elements_max_deep, list_LCID_max_deep_per_block)
+    markFinalFLFs(element_list, list_of_begin_end_block_pointer, list_elements_max_deep )
     # _printElementListByBlock(element_list, f"{filename}.txt", infoleaf = True, list_of_begin_end_block_pointer = list_of_begin_end_block_pointer) # si queremos indicador de LEAR hay que enviarlo
 
 
@@ -760,7 +779,7 @@ def markFinalFLFs_NEW(element_list, list_of_begin_end_block_pointer, list_final_
                 for e in list_of_elements:
                     element_list[e]["FLF"] = MARK_TERMINAL_LEAF
 
-def markFinalFLFs(element_list, list_of_begin_end_block_pointer, list_final_FLF, list_elements_max_deep, list_LCID_max_deep_per_block):
+def markFinalFLFs_OLD(element_list, list_of_begin_end_block_pointer, list_elements_max_deep ):
     for block in range(0,len(list_of_begin_end_block_pointer)):
         n = block
         begin = list_of_begin_end_block_pointer[n][0]
@@ -779,6 +798,68 @@ def markFinalFLFs(element_list, list_of_begin_end_block_pointer, list_final_FLF,
                 # marco todos los elementos del subblock como FLF
                 for e in list_of_elements:
                     element_list[e]["FLF"] = MARK_TERMINAL_LEAF
+
+# =============================================================================
+# Asumimos que los elementos que tengan tantos B_SB como los de máximo nivel que nos llegan, serán las FLF
+# =============================================================================
+def markFinalFLFs(element_list, list_of_begin_end_block_pointer, list_elements_max_deep ):
+    for block in range(0,len(list_of_begin_end_block_pointer)):
+        n = block
+        begin = list_of_begin_end_block_pointer[n][0]
+        end = list_of_begin_end_block_pointer[n][1]+1
+
+        for i in list_elements_max_deep[block]:
+            element = element_list[i]
+            deep = element["PBSB"]
+            LCID = element["LCID"]
+            L = element["L"]
+            # ahora tengo que buscar, dentro del bloque, todos los elementos que coincidan
+            list_of_FLF_subblocks = getAllElementsByDepth(element_list, list_of_begin_end_block_pointer, deep, LCID, L)
+            for subblock in list_of_FLF_subblocks:
+# 20200615 - configuration_machine devuelve 36 registros en lugar de 18                
+                for x in subblock: # puede devolver varios subbloques
+                    # obtengo todos los elementos de cada subblock
+                    list_of_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block, x)
+                    # marco todos los elementos del subblock como FLF
+                    for e in list_of_elements:
+                        element_list[e]["FLF"] = MARK_TERMINAL_LEAF
+
+
+                 
+# =============================================================================
+# Devuelve la lista de SB de elementos que tengan B_SB (nivel de profundidad) todos los elementos iguales hasta el último
+# XXX: está comprobado para profundidades de dos niveles, no lo he comprobado para profundidades de más niveles, puede dar error 
+# para más niveles probando que tienen que tener el mismo #deep y comenzar con el mismo SB                  
+# =============================================================================
+def getAllElementsByDepth(element_list, list_of_begin_end_block_pointer, deep, LCID, L):
+    list_of_list_of_SB = []
+    list_SB = []
+    
+    for block in range(0,len(list_of_begin_end_block_pointer)):
+        n = block
+        begin = list_of_begin_end_block_pointer[n][0]
+        end = list_of_begin_end_block_pointer[n][1]+1
+        
+        list_SB.clear()
+
+        for i in range(begin, end):    
+            element = element_list[i]   
+            l_deep = element["PBSB"]
+            l_LCID = element["LCID"]
+            l_L = element["L"]
+            # print(f"{len(l_deep)} {len(deep)} {l_deep[0]} {deep[0]}")
+            
+            if len(l_deep)!=0 and len(deep)!=0: # si no hay l_deep o deep para comparar nos vamos
+                # le quitamos 2 para quedarnos con el identificador de profundidad de lista en el nivel que nos interesa (ahí es dónde estará cualquier FLF)
+                if len(l_deep) == len(deep) and l_deep[0] == deep[0] and l_LCID == LCID and l_L == L: # esto hace que configuration_machine funcione correctamente (tiene varios FLF que pueden estar seguidos)
+                # if len(l_deep) == len(deep) and l_deep[0:len(l_deep)-1] == deep[0:len(deep)-2] and l_CID == LCID: # esto hace que configuration_machine funcione correctamente (tiene varios FLF que pueden estar seguidos)
+                # if len(l_deep) == len(deep) and l_deep[:-1] == deep[:-1]: # esto hace que G_SScores funcione correctamente (tiene varios FLF que pueden estar seguidos)
+                    
+                    SB = element["SB"]
+                    if not SB in list_SB:
+                        list_SB.append(SB)
+        list_of_list_of_SB.append(list_SB.copy())
+    return list_of_list_of_SB
                 
 # =============================================================================
 # DEEPEST
@@ -849,11 +930,9 @@ def _tests():
       
     # ESTRATEGIA para un elemento concreto
     index = 42
-    
+    E = index
     result = isLF(element_list, list_of_begin_end_block_pointer, list_max_level_per_block, E = index)
     print(f"ELEMENTS ES LF? {index} {result}")      
-    
-    
     
     # ELEMENTS SB
     # recogemos todos los elementos que pertenecen al subbloque del elemento que nos envían
@@ -876,8 +955,13 @@ def _tests():
 
     # LF
     # buscmmos todos los elementos LF por debajo del elemento enviado y con LCID inferior 
-    l_list_elements_same, l_ilst_subblocks_same, resultado = getLeafsBelowIndexSharingLCID(element_list, list_of_begin_end_block_pointer, E = index)     
-    print(f"ELEMENTS ENLACE LF: SAME LEVEL {l_list_elements_same} SB {l_ilst_subblocks_same}")   
+    # l_list_elements_same, l_ilst_subblocks_same, resultado = getLeafsBelowIndexSharingLCID(element_list, list_of_begin_end_block_pointer, E = index)     
+    # print(f"ELEMENTS ENLACE LF: SAME LEVEL {l_list_elements_same} SB {l_ilst_subblocks_same}")  
+    
+    l_list_elements_same, l_ilst_subblocks_same, resultado = getLFSameLevel(element_list, list_of_begin_end_block_pointer, E = index)     
+    print(f"ELEMENTS ENLACE LF: SAME LEVEL {l_list_elements_same} SB {l_ilst_subblocks_same}")  
+    
+    
 
 
 # =============================================================================
@@ -898,6 +982,8 @@ def markSubBlockAsLeaf(element_list, list_of_begin_end_block_pointer, E, isleaf 
     
     return sub_block
     
+
+
 # =============================================================================
 # Marcamos todas las LEAF de los element list
 # =============================================================================
@@ -906,54 +992,6 @@ def markTemporalLeafs(element_list, list_of_begin_end_block_pointer, list_max_le
         E = element["E"]
         isLF(element_list, list_of_begin_end_block_pointer, list_max_level_per_block, E, mark_leafs = True)
 
-# =============================================================================
-# Marco lo que considero que son las LEAF finales de cada bloque (en el caso de tener listas al mismo nivel, este paso es necesario)
-# =============================================================================
-def markFinalLeafs(element_list, list_of_begin_end_block_pointer, list_max_level_per_block, list_max_LCID_per_block):
-    FLF_in_block = [] # apuntamos si un bloque tiene FLF
-    for n in range(0, len(list_of_begin_end_block_pointer)): # rastreamos cada bloque
-        begin = list_of_begin_end_block_pointer[n][0]
-        end = list_of_begin_end_block_pointer[n][1]+1
-        # fd_list_per_block = [] # marco todos los FD como INEXISTENTES, de momento 
-        lists_at_same_level = False
-        
-        for l in range(begin, end):
-            element = element_list[l]
-            
-            # si el nivel es el máximo
-            if element["L"] == list_max_level_per_block[n]:
-                # hay otros elementos al mismo nivel pero con LCID menor? (este es el indicador de listas al mismo nivel)
-                if element["LCID"] < list_max_LCID_per_block[n]: 
-                    print(f"lists at same level")
-                    lists_at_same_level = True
-
-                    
-        if lists_at_same_level:
-            for l in range(begin, end):
-                element = element_list[l]
-                # si el nivel es el máximo
-                if element["L"] == list_max_level_per_block[n]:
-                    # hay otros elementos al mismo nivel pero con LCID menor? (este es el indicador de listas al mismo nivel)
-                    # si el nivel de list count in dictionary es el máximo
-                    if element["LCID"] == list_max_LCID_per_block[n]:
-                        element["FLF"] = MARK_TERMINAL_LEAF
-                        if not n in FLF_in_block: 
-                            FLF_in_block.append(n) # marco que este bloque tiene FLFs
-
-        # finalmente, si en el bloque no hay ninguna FLF, entonces todas lo son
-        for n in range(0, len(list_of_begin_end_block_pointer)): # rastreamos cada bloque
-            # voy a marcar todas como FLF si el bloque no ha tenido listas al mismo nivel (es decir, que tiene FLFs)    
-            # consigo todas las LEAF de un bloque
-            # y las marco como FLF                            
-            
-            if not n in FLF_in_block:
-                B = n
-                list_of_LF, list_of_SB = getListOfLeafPerBlock(element_list, list_of_begin_end_block_pointer, B)
-                # marco todos esos elementos como MARK_TERMINAL_LEAF
-                for i in list_of_LF:
-                    element = element_list[i]
-                    element["FLF"] = MARK_TERMINAL_LEAF
-
 
 # =============================================================================
 # Los final LEAFS serán siempre
@@ -961,6 +999,7 @@ def markFinalLeafs(element_list, list_of_begin_end_block_pointer, list_max_level
 # si encontramos un nivel 4, hay que poner su máximo nivel como FLF                    
 # =============================================================================
 def markFinalLeafs(element_list, list_of_begin_end_block_pointer, list_max_level_per_block, list_max_LCID_per_block):
+    # print("HOLA ***************************************************************************")
     FLF_in_block = [] # apuntamos si un bloque tiene FLF
     for n in range(0, len(list_of_begin_end_block_pointer)): # rastreamos cada bloque
         begin = list_of_begin_end_block_pointer[n][0]
@@ -972,8 +1011,6 @@ def markFinalLeafs(element_list, list_of_begin_end_block_pointer, list_max_level
             element = element_list[l]
             
             # cogemos los elementos de máxima profundidad, 
-            
-            
             
             # si el nivel es el máximo
             if element["L"] == list_max_level_per_block[n]:
@@ -1017,6 +1054,8 @@ def markFinalLeafs(element_list, list_of_begin_end_block_pointer, list_max_level
 # =============================================================================
 # Wrapper de la funcion isleaf que sólo hay que enviarle el index del elemento    
 # =============================================================================
+# isLF(element_list, list_of_begin_end_block_pointer, list_max_level_per_block, E)                    
+                    
 def isLF(element_list, list_of_begin_end_block_pointer, list_max_level_per_block, E, mark_leafs = False):
      
     block = element_list[E]["B"]
@@ -1044,9 +1083,9 @@ def isLF(element_list, list_of_begin_end_block_pointer, list_max_level_per_block
     list_elements_SB = getSubBlockElementsByIndex(element_list, list_of_begin_end_block_pointer, E)
     # cojo el de menor índice para operar
     E = min(list_elements_SB)
+    FD = element_list[E]["FD"]
 # fin añadido   
-
-
+    deep = element_list[E]["PBSB"]
     
     # rastreamos todos los elementos del bloque
     n = block
@@ -1057,18 +1096,22 @@ def isLF(element_list, list_of_begin_end_block_pointer, list_max_level_per_block
     # print(f"Buscamos chequear si LF para el elemento E {E} --- si cumple L {L+2} FD [{LD}] D {D+1} - FADC {ADC}")
     for l in range(E, end): # buscamos desde el elemento que nos dicen en adelante
         element = element_list[l]
-        if element["L"] == L+2: # sólo elementos de nivel superior (L==L+2), pero si estamos con cualquier de nivel 2, entonces no puede ser LEAF!
-            nivel_superior = True
+        l_L = element["L"]
+        # if element["L"] == L+2: # sólo elementos de nivel superior (L==L+2), pero si estamos con cualquier de nivel 2, entonces no puede ser LEAF!
+        #     nivel_superior = True
             # print(f"Mirando elemento {l}  L {element['L']} [{element['FD']}] {element['D']}")
             # no es LEAF si un elemento de nivel superior está apuntando a este elemento (su FD = a nuestro LD) y los D (contadores de diccionario) son iguales
             # if element["FD"] == LD and element["D"] == D and element["LCID"] == LCID: # si el FD del nivel superior es igual al LD de este elemento y los D son iguales y los LCID son iguales
             # FIXME: 001 Diccionarios contíguos?
             
 # XXX: 2020.06.05 - quitado            
-            # if element["FD"] == LD and element["LCID"] == LCID: # si el FD del nivel superior es igual al LD de este elemento y los LCID son iguales
-            #     # print(f"ELEMENT NO LF same LCID {l} - L {element['L']} [{element['FD']}] {element['D']}")
-            #     retorno = False
-            #     break
+        # mirar el L---
+        # print(f"{element['FD']} - {LD} - {element['LCID']} {LCID} - {l_L} {L} ")
+        
+        if element["FD"] == LD and element["LCID"] == LCID and l_L > L: # si el FD del nivel superior es igual al LD de este elemento y los LCID son iguales
+            # print(f"ELEMENT NO LF same LCID {l} - L {element['L']} [{element['FD']}] {element['D']}")
+            retorno = False
+            break
 # fin quitado
                 
 # XXX: añadido 
@@ -1077,10 +1120,26 @@ def isLF(element_list, list_of_begin_end_block_pointer, list_max_level_per_block
             #     retorno = False
             #     break
             # if element["FD"] == LD and element["LCID"] == LCID and element["D"] == D+1 and element["FADC"] == ADC: # si el dict_count es contíguo, significa que no puede ser LF
-            if element["FD"] == LD and element["FADC"] == ADC: # si el dict_count es contíguo, significa que no puede ser LF
-                # print(f"ELEMENT NO LF contiguous D {l} - L {element['L']} [{element['FD']}] {element['D']}  {element['FADC']}  {element['ADC']}")
-                retorno = False
-                break            
+            # if element["FD"] == LD and element["FADC"] == ADC: # si el dict_count es contíguo, significa que no puede ser LF
+            #     # print(f"ELEMENT NO LF contiguous D {l} - L {element['L']} [{element['FD']}] {element['D']}  {element['FADC']}  {element['ADC']}")
+            #     retorno = False
+            #     break            
+            
+            # 20200616 chequeamos si es LF o no en base a B_SB
+
+        l_deep = element["PBSB"]
+        # print(f"{l_deep} {deep}")
+        
+        # PBSB 
+        # L menor
+        # mirar LCID
+        
+        if compare_pre_lists(deep, l_deep):
+            retorno = False
+            break                   
+            
+            # 20200616
+            
             # if element["FD"] == LD and element["LCID"] != LCID+1 and (element["FADC"] == ADC+1 or element["FADC"] == ADC): # si los LCID no son contiguos, no puede ser LEAF
             #     print(f"ELEMENT NO LCID {l} - L {element['L']} [{element['FD']}] {element['LCID']}  {element['FADC']}  {element['ADC']}")
             #     retorno = False
@@ -1140,7 +1199,7 @@ def getListOfLeafPerBlock(element_list, list_of_begin_end_block_pointer, B):
     return list_of_LF, list_of_SB
 
 # =============================================================================
-# Recupero la lista de LF que tienen el mismo LCID entre ellas pero con un LCID menor que el elemento que envío, 
+# Recupero la lista de LF que tienen el mismo LD entre ellas pero con un LD menor que el elemento que envío, 
 # por debajo del índice de elemento que me envían o -1 si no encuentro ninguna
 # =============================================================================
 def getLeafsBelowIndexSharingLCID(element_list, list_of_begin_end_block_pointer, E):
@@ -1155,6 +1214,7 @@ def getLeafsBelowIndexSharingLCID(element_list, list_of_begin_end_block_pointer,
     
     
     # find first LF con LCID lower
+    # por como se estructura un JSON siempre debemos buscar hacia el comienzo del bloque
     LF_to_list = -1
     for l in range(E-1, begin-1, -1):
         element = element_list[l]
@@ -1183,7 +1243,7 @@ def getLeafsBelowIndexSharingLCID(element_list, list_of_begin_end_block_pointer,
         newE = E    
         if isFLF == True:
             newE  = -1
-            # buscamos el últimos elemento FLF antes de pasar a elementos no FLF (en G_SScores suele ocurrir que hay muchas FLF juntas)        
+            # buscamos el último elemento FLF antes de pasar a elementos no FLF (en G_SScores suele ocurrir que hay muchas FLF juntas)        
             for l in range(E, begin-1, -1):
                 element = element_list[l]
                 if element["FLF"] == MARK_TERMINAL_LEAF:
@@ -1347,6 +1407,21 @@ def getDirectLink(element_list, list_of_begin_end_block_pointer, current_E):
 # --- SUBBLOCK ----------------------------------------------------------------------
 
 # =============================================================================
+# Comparar dos listas quitando el último elemento de la segunda lista (para la comparación de SB)
+# =============================================================================
+def compare_pre_lists(lista1, pre_lista2):
+
+    # # según el nivel decido qué parte del PBSB cojo    
+    # elements = [0,0,0,0,1,0,2,0,3,0,4,0,5,0,6,0,7,0,8,0,9,0,10]
+    
+    a = lista1
+    b = pre_lista2[:-1]
+    if a == b:
+        return True
+    else:
+        return False
+
+# =============================================================================
 # Lista con los elementos de mayor profundidad de cada nivel, devuelve lista de elementos por bloque y lista de subbloques por bloque
 # estos elementos son los verdaderos LEAF
 # =============================================================================
@@ -1443,28 +1518,6 @@ def get_indexes_maxvalue(l):
 # =============================================================================
 def get_indexes_pervalue(l, value):
     return [i for i, x in enumerate(l) if x == value]
-
-
-
-# =============================================================================
-# Devuelve lista de punteros a elementos de máxima profundidad en el nivel enviado, para un bloque concreto
-# =============================================================================
-# def getMaxDeepLevelOfLevel4_B(element_list, list_of_begin_end_block_pointer, list_possible_elements, B):
-#         n = B
-#         begin = list_of_begin_end_block_pointer[n][0]
-#         end = list_of_begin_end_block_pointer[n][1]+1
-
-#         # por cada elemento construyo una sublista de elementos
-#         sub_list_elementos = []
-#         for puntero_level_4 in list_possible_elements[n]:
-
-#             a = [ i["L"] for i in element_list[list_possible_elements[n][0] : list_possible_elements[n][1]-1]]
-
-#             for i in range(puntero_level_4, )
-#                 element = element_list[puntero_level_4]
-#                 # creo una sublista entre el elemento que me llega y el elemento anterior al siguiente, cuando llega al final busco con el elemento anterior a end
-#                 sub_list_elementos.append(element["L"])
-    
     
 # =============================================================================
 # Dado una lista de level_4 por bloque, busco los elementos con su máximo nivel de profundidad y los devuelvo
@@ -1531,68 +1584,7 @@ def getMaxDeepLevelOfLevel4(element_list, list_of_begin_end_block_pointer, list_
         
     return max_deep_per_block, list_leaf_level_per_block, list_LCID_max_deep_per_block     
         
-
-
-def getMaxDeepLevelOfLevel4_OLD(element_list, list_of_begin_end_block_pointer, list_possible_elements):
-  
-    list_leaf_level_per_block = []
-    list_last_LCID_per_block = []
-    
-    max_deep_per_block = []
-    list_elements_max_deep = []    
-    list_LCID_max_deep_per_block = []
-    
-    # rastreo los elementos
-    for block in range(0,len(list_of_begin_end_block_pointer)):
-        n = block
-        begin = list_of_begin_end_block_pointer[n][0]
-        end = list_of_begin_end_block_pointer[n][1]+1
-        
-        max_level = -1
-        last_level_seen = -1
-        last_LCID_seen = -1
-        
-        end_busqueda = -1
-        
-      
-        # PASO 1: busco desde los los elementos que me han llegado (son punteros a niveles 4)
-        for x in range(0,len(list_possible_elements[block])):
-            # examinamos desde el elemento al que estamos apuntando hasta el final del bloque
-            for i in range(list_possible_elements[block][x], end):
-
-                element = element_list[i]
-                print(f"ANALIZANDO ELEMENTO {i}")
-                if element["L"] < last_level_seen: # he bajado a un nivel inferior?
-                    if element["L"] == 4 or element["L"] == 2: # hemos bajado a otro nivel 4 que no es el nivel final?
-                        print(f"HEMOS PASADO A UN NIVEL INFERIOR: element {i} current level {element['L']} last_level_seen {last_level_seen}")
-                        end_busqueda = i-1 # me quedo con la referencia al elemento anterior
-                          
-                        break
-                    else:
-                        last_level_seen = element["L"]  
-                        last_level_seen_element = i
-                        last_LCID_seen = element["LCID"]                  
-
-                        # if last_LCID_seen != element["LCID"]: # (ojo, si tienen el mismo LCID todavía no me quedo con él) - esto no lo entiendo
-                        #     continue
-                        
-                        print(f"last_level_seen {last_level_seen} del elemento {last_level_seen_element}")
-                
-        # PASO 2: busco desde los los elementos que me han llegado
-        # cojo todos loe elementos del subloque perteneciente al elemento last_level_seen_element y esos son los que pertenecen al máximo nivel 
-        lista_de_elementos = getSubBlockElementsByIndex(element_list, list_of_begin_end_block_pointer, last_level_seen_element)
-        
-
-        max_deep_per_block.append(last_level_seen) # añado el mayor nivel por bloque
-        list_leaf_level_per_block.append(lista_de_elementos)
-        list_LCID_max_deep_per_block.append(last_LCID_seen)
-        
-    return max_deep_per_block, list_leaf_level_per_block, list_LCID_max_deep_per_block     
-        
-        # for i in range(begin, end):
-        #     element = element_list[i]
-
-                
+               
             
 # =============================================================================
 # Devolvemos todos los elementos que conciden con B, L y LCID            
@@ -1626,8 +1618,27 @@ def getElementsLevel4FinalLeaves(element_list, list_of_begin_end_block_pointer, 
         # consigo una lista con los elementos que tienen posibilidad de tener FLF
         for i in range(begin, end):
             element = element_list[i]
+            coger = True
             if element["L"] == 4 and element["LCID"] == list_last_LCID_per_block[n][0]:
-                list_elements.append(i)
+# 20200615 - configuration_machine no detecta correctamente las LF y cree que todo son FLF                
+                # antes de añadirla tengo que averiguar si realmente puede ser una FLF (es decir, que no es un LINK DIRECT de algún elemento)
+                l_B_SB = element["PBSB"]
+                # print(f"posible element {i} l_B_SB {l_B_SB}")
+                # si encuentro que esta lista está contenida en otra, es que es LINK DIRECT, con lo que no podré añadirlo
+                for x in range(begin, end):
+                    o_element = element_list[x]
+                    o_l_B_SB = o_element["PBSB"]
+                    # print(f"\tcomparo con {i} o_l_B_SB {o_l_B_SB} resultado {compare_pre_lists(l_B_SB, o_l_B_SB)}")
+
+                    if compare_pre_lists(l_B_SB, o_l_B_SB):
+                        # print(f"\t\t coger=False")
+                        coger = False
+                        break
+                if coger == True:
+                    # print(f"\t\t incluimos element {i}")
+# 20200615 - fin                    
+                    list_elements.append(i)
+    
         list_possible_elements.append(list_elements)
     return list_possible_elements
    
@@ -1945,10 +1956,22 @@ def getElementsInBlockByLevel(element_list, list_of_begin_end_block_pointer, E):
 # esta es la función recursiva de creación de registros    
 # =============================================================================
 registro = []
+
+
+
+STRATEGY_OLD = 1
+STRATEGY_NEW = 2
+
+strategy = STRATEGY_OLD
+
 # =============================================================================
 # Devuelve los elementos de enlace inmediato tradicional (FD = LD) - añado ADC y FADC para que no coja elementos erróneos de diccionarios adyacentes
 # =============================================================================
 def getElementsEnlaceInmediato(element_list, list_of_begin_end_block_pointer, E):
+    global strategy
+    if strategy == STRATEGY_NEW:
+        return getElementsLINKDIRECT(element_list, list_of_begin_end_block_pointer, E)
+    
     # lo que devuelve la función
     l_registro = []
     subblocks_list = []
@@ -1970,10 +1993,8 @@ def getElementsEnlaceInmediato(element_list, list_of_begin_end_block_pointer, E)
         current_E = element["E"]
         level_element_to_look_for = level_element_to_look_for - 1
 
-        # miro hacia atrás y consigo el primero element que debe estar enlazado (eso me vale porque luego opero con todos los elementos de su subbloque)
+        # miro hacia atrás y consigo el primer element que debe estar enlazado (eso me vale porque luego opero con todos los elementos de su subbloque)
         # si el level == 2 cojo todos los elementos del nivel 2, pero si no, sólo los que estén por debajo del subbloque actual (así no hago una búsqueda transversal y me traigo más elementos de otros subbloques superiores)
-        
-        # list_elements_prior_level = getAllElementsAtLevelAndLevelDictionary(element_list, list_of_begin_end_block_pointer, block, level_to_look_for, level_dictionary_to_look_for, level_element_to_look_for, subblock, E)
         list_elements_prior_level = getDirectLink(element_list, list_of_begin_end_block_pointer, E)
         
         for i in list_elements_prior_level:
@@ -1992,37 +2013,47 @@ def getElementsEnlaceInmediato(element_list, list_of_begin_end_block_pointer, E)
     
     return l_registro, subblocks_list
 
+# =============================================================================
+# Nueva aproximación: usa B_SB_prefix
+# aquí nunca enlazará con elementos de nivel 2 por cómo se construye el B_SB así que se enlazan directamente en createReg antes de llamar a esta función    
+# =============================================================================
+def getElementsLINKDIRECT(element_list, list_of_begin_end_block_pointer, E):
+    element = element_list[E]
+    B = element["B"]
+    SB = element["SB"]
+    B_SB = element["PBSB"]
+    
+    # consigo los subbloques que tengan la misma sublista en este subbloque (todos los elementos menos el último) porque estarán enlazados
+    # rastreo dentro del bloque
+    l_registro = []
+    l_list_subblocks = []
+    
+    begin = list_of_begin_end_block_pointer[B][0]
+    end = list_of_begin_end_block_pointer[B][1]+1
+    for l in range(begin, end): # rastreamos todos los elementos del bloque
+        l_element = element_list[l]    
+        l_B_SB = l_element["PBSB"]
+        l_SB = l_element["SB"]
+        # no debo comparar el SB en el que me encuentro        
+        if l_SB == SB:
+            # print(f"no se compara {l}")
+            continue
+        # print(f"comparamos {l} con l_B_SB {l_B_SB} con {E} con B_SB {B_SB}")
+        if compare_pre_lists(l_B_SB, B_SB):
+            # print(f"son iguales {l} y {E}")
+            # añado el elemento
+            if not l in l_registro:
+                l_registro.append(l)
+            # añado el SB    
+            SB = l_element["SB"]
+            if not SB in l_list_subblocks:
+                l_list_subblocks.append(SB)
+                
+    return l_registro, l_list_subblocks
+
+
 def _test_getListElementsDirectLink():
     getElementsEnlaceInmediato(element_list, list_of_begin_end_block_pointer, 24)
-
-# =============================================================================
-# Obtiene todos los elementos que coinciden en el nivel y tienen un LCID -1, en el mismo bloque
-# Problema - pueden no coincidir en el nivel...    
-# =============================================================================
-def getElementsEnlaceLCID_BACK(element_list, list_of_begin_end_block_pointer, E):
-    # consigo información relevante del elemento
-    o_element = element_list[E]
-    block = o_element["B"]
-    
-    l_list_elements = []
-    l_ilst_subblocks = []
-    
-    # rastreo dentro del bloque
-    begin = list_of_begin_end_block_pointer[block][0]
-    end = list_of_begin_end_block_pointer[block][1]+1
-    for l in range(begin, end): # rastreamos todos los elementos del bloque
-        element = element_list[l]
-        # es un elemento que me interesa?
-        if element["L"] == o_element["L"]:
-            if element["LCID"] == o_element["LCID"]-1:
-                # lo añado a la lista evitando duplicados
-                e = element["E"]
-                if not e in l_list_elements:
-                    l_list_elements.append(e)
-                sb = element["SB"]
-                if not sb in l_ilst_subblocks:
-                    l_ilst_subblocks.append(sb)
-    return l_list_elements, l_ilst_subblocks
 
 # =============================================================================
 # Obtiene los elementos que podrían venir de una lista al mismo nivel
@@ -2081,167 +2112,6 @@ def _test_getListElementsPerLCID():
 # =============================================================================
 LIST_REGISTROS = []    
 
-def createReg_BACK(element_list, 
-              list_of_begin_end_block_pointer, 
-              index, 
-              deep_level = None, 
-              l_registro = [], 
-              formateo = "", 
-              traza = False, 
-              calledAsRecursive = False, # entramos en la función en modo recursivo o no (impacta en el campo deep_level)
-              filename_traza = "kk.txt"
-              ):
-    
-    FORMATEO = formateo + "\t" 
-    global LIST_REGISTROS # esta lista tiene que vaciarse ANTES de llamar a createReg
-
-    if traza:
-        print_f(f"\n{FORMATEO}**********", filename_traza)            
-        print_f(f"{FORMATEO}CREATEREG para index {index}", filename_traza)
-    # obtengo información relevante del elemento
-    # global registro
-    element = index
-    element = element_list[element]
-    B = element["B"]
-    # SB = element["SB"]
-    # SB_T = element["SB_T"]
-    # FD = element["FD"]
-    L = element["L"]
-    # LD = element["LD"]
-    # D = element["D"]
-    # LE = element["D"]
-    E = element["E"]
-    
-    registro = l_registro.copy()
-    # evitamos procesar elementos que ya han sido procesados
-    if E in registro:
-        return LIST_REGISTROS.copy()
-    
-    # 1) FLF enlaza con su primer SB de enlace, si lo hay 
-    # 2) consigue la lista de subbloques que están a su mismo L peron con LCIF -1 y los envía a la función recursiva para que hagan lo mismo
-    # 3) si llega un momento en que no hay más como en 1), entonces enlaza hacia detrás como siempre
-
-    if traza:
-        print_f(f"{FORMATEO}REGISTRO RECIBIDO PARA PROCESAR {registro}", filename_traza)
-
-# ***********************************************************
-# SB: 
-# añado los elementos pertenecientes al subbloque a la lista para componer el registro
-# ***********************************************************
-    list_SB_FLF = getSubBlockElementsByIndex(element_list, list_of_begin_end_block_pointer, E = E)
-    # print(f"ELEMENTS OF SAME SB OF {index} ELEMENTS  {list_SB_FLF} ")  
-    if traza:
-        print_f(f"{FORMATEO}ELEMENTS: IN SUBBLOCK {list_SB_FLF}", filename_traza)
-    for i in list_SB_FLF:
-        if not i in registro:
-            registro.append(i)    
-
-# ***********************************************************
-# LINK DIRECT: 
-# consigo los elementos de enlace inmediato de este elemento
-# *********************************************************** 
-    list_elements_LinkDirect, list_subblocks_LinkDirect = getElementsEnlaceInmediato(element_list, list_of_begin_end_block_pointer, E = E)
-    # print(f"LINK DIRECT ELEMENTS  {list_elements_LinkDirect} SB  {list_subblocks_LinkDirect} ")  
-    if traza:
-        print_f(f"{FORMATEO}ELEMENTS: LINK DIRECT {list_elements_LinkDirect}", filename_traza)
-    # los añado al registro, evitando duplicados
-    if len(list_elements_LinkDirect)>0:
-        index = min(list_elements_LinkDirect) # al poder estar desordenadas, cojo el elemento con menor valor (el primero!)
-        
-        for i in list_elements_LinkDirect:
-            if not i in registro:
-                registro.append(i)
-
-
-# =============================================================================
-# LF
-# Busco la lista con todas las LF del bloque desde el elemento que le envío, hacia atras(un LCID mínimo menos) y mando, una a una, a que construyan el registro        
-# tienen que ser LF no FLF                
-# =============================================================================
-    copia_local_registro = registro.copy()
-
-    lista_LF = []
-    lista_LF, list_of_SB = getListOfLeafPerBlock(element_list, list_of_begin_end_block_pointer, B = element_list[E]["B"])
-    # ahora mando a crear registro con cada primer elemento de SB, ya que me pueden venir bastantes LF
-    for i in list_of_SB:
-        # si estoy en el SB del elemento actual, no lo proceso para no crear un bucle infinito        
-        if not i == element_list[E]["SB"]:
-            list_elements_of_SB = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block = B, subblock = i)
-            index = list_elements_of_SB[0]
-            if traza:
-                print_f(f"{FORMATEO}ELEMENTS LF: SAME LEVEL REGISTRO TIENE AHORA {registro}", filename_traza)
-                print_f(f"{FORMATEO}ELEMENTS LF: SAME LEVEL MANDAMOS EL INDEX {index}", filename_traza)            
-            registro = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza) 
-            registro = copia_local_registro.copy()           
-
-    # añado todos los elementos de nivel 2
-    list_elements_level_2 = getAllElementsAtLevel(element_list, list_of_begin_end_block_pointer, B, 2)
-    for i in list_elements_level_2:
-        if not i in registro:
-            registro.append(i)
-    # en este momento tenemos un registro completo, lo añadimos al conjunto de registros        
-    if traza:
-        print_f(f"{FORMATEO}----> DEVOLVEMOS EL REGISTRO {registro} columnas {len(registro)}<-----------------------------------------------------------------", filename_traza)
-        
-    LIST_REGISTROS.append(registro.copy())
-
-
-# =============================================================================
-# LCID 
-# listas al mismo nivel                
-# =============================================================================
-    # listas_same_level = False
-    # copia_local_registro = registro.copy()
-    
-    # l_list_elements_same, l_ilst_subblocks_same, l_list_elements_level_1, l_ilst_subblocks_level_1 = getElementsEnlaceLCID(element_list, list_of_begin_end_block_pointer, E = E)     
-    # if traza:
-    #     print_f(f"{FORMATEO}ELEMENTS: LCID SAME LEVEL {l_list_elements_same} SB {l_ilst_subblocks_same} -- LEVEL -1 : {l_list_elements_level_1} SB {l_ilst_subblocks_level_1}", filename_traza)   
-    
-    # if len(l_ilst_subblocks_same)>0:
-    #     listas_same_level = True            
-    #     for i in l_ilst_subblocks_same:
-    #         # consigo sus elementos y opero sólo con el primero (el resto comparten todos la misma información)
-    #         l1_list_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block = B, subblock = i)
-    #         index = min(l1_list_elements) # al poder estar desordenadas, cojo el elemento con menor valor (el primero!)
-    #         if traza:
-    #             print_f(f"{FORMATEO}LCID: SAME LEVEL REGISTRO TIENE AHORA {registro}", filename_traza)
-    #             print_f(f"{FORMATEO}LCID: SAME LEVEL MANDAMOS EL INDEX {index}", filename_traza)
-
-    #         # index = l_list_elements[0]
-    #         registro = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza) 
-    #         registro = copia_local_registro.copy()           
-
-    # # if len(l_ilst_subblocks_level_1)>0:
-    # #     listas_same_level = True            
-    # #     for i in l_ilst_subblocks_level_1:
-    # #         # consigo sus elementos y opero sólo con el primero (el resto comparten todos la misma información)
-    # #         l1_list_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block = B, subblock = i)
-    # #         index = min(l1_list_elements) # al poder estar desordenadas, cojo el elemento con menor valor (el primero!)
-    # #         if traza:
-    # #             print_f(f"{FORMATEO}LCID: LEVEL - 1 REGISTRO TIENE AHORA {registro}", filename_traza)
-    # #             print_f(f"{FORMATEO}LCID: LEVEL - 1 MANDAMOS EL INDEX {index}", filename_traza)
-
-    # #         # index = l_list_elements[0]
-    # #         registro = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza) 
-    # #         registro = copia_local_registro.copy()           
-
-    # if listas_same_level == False:            
-    #     # ***********************************************************
-    #     # añado todos los elementos de nivel 2 de este bloque al registro
-    #     # ***********************************************************
-    #     list_elements_level_2 = getAllElementsAtLevel(element_list, list_of_begin_end_block_pointer, B, 2)
-    #     for i in list_elements_level_2:
-    #         if not i in registro:
-    #             registro.append(i)
-    #     # en este momento tenemos un registro completo, lo añadimos al conjunto de registros        
-    #     if traza:
-    #         print_f(f"{FORMATEO}----> DEVOLVEMOS EL REGISTRO {registro} <-----------------------------------------------------------------", filename_traza)
-    #     LIST_REGISTROS.append(registro.copy())
-
-    
-    return LIST_REGISTROS.copy()
-
-
 # XXX: 202006.001 - obligo a que la función de createreg sólo haga las busquedas correspondientes a LINKDIRECT o a LF MISMO NIVEL
 SEARCH_METHOD_TOTAL = 1
 SEARCH_METHOD_LINKDIRECT = 2
@@ -2254,29 +2124,37 @@ VERBOSE_REDUCED = 2
 
 g_verbose = -1
 
+advance_counter = -1
+
 def createReg(element_list, 
               list_of_begin_end_block_pointer, 
               index, 
               deep_level = None, 
               l_registro = [], # contiene los punteros a los elementos
 # XXX: 202006.001 - incluyo una referencia a los registros que han sido procesados             
-              l_processed_SB = [], # SB que han sido procesados, si no está aquí, hay que procesarlo, elimina recursividad infinta
+              l_processed_SB = [], # SB que han sido procesados, si no está aquí, hay que procesarlo
 # 202006.001              
               formateo = "", 
               traza = False, 
               calledAsRecursive = False, # entramos en la función en modo recursivo o no (impacta en el campo deep_level)
               filename_traza = "kk.txt",
-              search_method = None, # controla si nos hemos de quedar en LINK DIRECT o vamos a hacer también la búsqueda en elemento LEAF (listas al mismo nivel)
+              search_method = None,
               contador = -1
               ):
     
-
+    global advance_counter
     global LIST_REGISTROS # esta lista tiene que vaciarse ANTES de llamar a createReg
 
     global gContadorTraza
     global g_verbose
     # print_f(f"\n**********", filename_traza)            
     # print_f(f"CREATEREG para index {index}", filename_traza)
+
+    advance_counter += 1
+    if g_verbose == VERBOSE_TOTAL or g_verbose == VERBOSE_REDUCED:
+        if not advance_counter % 100:
+            print(f"createReg {advance_counter}")        
+
 
 
     # obtengo información relevante del elemento
@@ -2319,10 +2197,6 @@ def createReg(element_list,
 
 # XXX: 202006.001 CSP Facturación devuelve columnas vacías
 
-    list_processed_subblocks = [] # sólo tiene sentido si en el bloque que procesamos sólo tiene elementos de nivel 2, aunque tenga varios SB. En este caso devolvemos todos los SB que tiene el bloque para que createDFFromLeafs no procese el resto de SB y vuelque registros duplicados
-
-
-    # esto es sólo para notificar los subloques cuando estoy pidiendo la traza
     l_subblock = []
     for l in registro:
         l_SB = element_list[l]["SB"]
@@ -2344,24 +2218,11 @@ def createReg(element_list,
     # if SB in l_subblock:
     #     return registro        
 
-    if SB in processed_SB: # si el subbloque ya ha sido procesado nos vamos, así evitamos recursividad infinta
+    if SB in processed_SB:
         return registro        
     else:
         processed_SB.append(SB) # notifico que este SB lo procesamos
  
-    # 20200611 - configuration_machine presenta un tipo de JSON que no había visto hasta ahora, todos los elementos de un bloque son L == 2
-    # añadimos esto cuando sólo hay elementos con nivel 2 en el bloque
-    if calledAsRecursive == False and L == 2: # OJO! Circunstancia especial, nos están llamando desde createDFFromLeafs y nos encontramos directamente con un level 2, todos los elementos 2 del bloque componen el registro
-        registro = getElementsInBlockByLevel(element_list, list_of_begin_end_block_pointer, E = index)
-        # lo añado como registro completo
-        LIST_REGISTROS.append(registro.copy())
-        # quiero devolver todos los SB de dotos los elementos ya que sólo hay nivel 2 en este B
-        for i in registro:
-            SB = element_list[i]["SB"]
-            if not SB in list_processed_subblocks:
-                list_processed_subblocks.append(SB)
-        return LIST_REGISTROS.copy(), list_processed_subblocks            
-    
     if L == 2:
         return registro    
     
@@ -2385,70 +2246,88 @@ def createReg(element_list,
 # consigo los elementos de enlace inmediato de este elemento
 # seguimos teniendo un registro único, y vamos incrementando la info de nuestro registro que nos llega            
 # *********************************************************** 
-    if search_method == SEARCH_METHOD_TOTAL or search_method == SEARCH_METHOD_LINKDIRECT:            
-        list_elements_LinkDirect, list_subblocks_LinkDirect = getElementsEnlaceInmediato(element_list, list_of_begin_end_block_pointer, E = E)
-        # print(f"LINK DIRECT ELEMENTS  {list_elements_LinkDirect} SB  {list_subblocks_LinkDirect} ")  
-        if traza:
-            if g_verbose == VERBOSE_TOTAL:
-                print_f(f"{FORMATEO}ELEMENTS: LINK DIRECT {list_elements_LinkDirect} SB {list_subblocks_LinkDirect}", filename_traza)
-            else:
-                print_f(f"{FORMATEO}ELEMENTS: LINK DIRECT SB {list_subblocks_LinkDirect}", filename_traza)
-                
-        # los añado al registro, evitando duplicados
-        if len(list_elements_LinkDirect)>0:
-            index = min(list_elements_LinkDirect) # al poder estar desordenadas, cojo el elemento con menor valor (el primero!)
             
-            for i in list_elements_LinkDirect:
-                if not i in registro:
-                    registro.append(i)
-    
-    # XXX: 202006.001 añadido para arreglar columnas vacías en CSPFacturacion    
-        copia_local_registro = registro.copy()
-        if len(list_subblocks_LinkDirect)>0:
-     
-            for i in list_subblocks_LinkDirect:
-    # XXX: 202006.001 si el elemento que voy a enviar tiene el mismo subbloque al que estoy estudiando, no lo envío, porque genera un bucle infinito            
-                if not i == SB:            
-    # 202006.001 si el elemento que voy a enviar tiene el mismo subbloque al que estoy estudiando, no lo envío, porque genera un bucle infinito            
-                    # consigo sus elementos y opero sólo con el primero (el resto comparten todos la misma información)
-                    l1_list_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block = B, subblock = i)
-                    index = min(l1_list_elements) # al poder estar desordenadas, cojo el elemento con menor valor (el primero!)
-                    if traza:
-                        l_subblock = []
-                        for l in registro:
-                            l_SB = element_list[l]["SB"]
-                            if not l_SB in l_subblock:
-                                l_subblock.append(l_SB)                    
-                        if g_verbose == VERBOSE_TOTAL:                                
-                            print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT REGISTRO TIENE AHORA {registro} SB [{l_subblock}]", filename_traza)
-                        else:
-                            print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT REGISTRO TIENE AHORA SB [{l_subblock}]", filename_traza)
+    if search_method == SEARCH_METHOD_TOTAL or search_method == SEARCH_METHOD_LINKDIRECT:   
 
+        seguir_buscando = True
+        
+        if element_list[E] == 4:
+            # añado todos los elementos del nivel 2 y sigo
+            list_level_2 = (element_list, list_of_begin_end_block_pointer, element_list[E]["B"], 2)
+            # los añado al registro a devolver
+            for i in list_level_2:
+               if not i in registro:
+                   registro.append(i)           
+            seguir_buscando = False # que no siga buscando
+            
+        if seguir_buscando == True: 
+            list_elements_LinkDirect, list_subblocks_LinkDirect = getElementsEnlaceInmediato(element_list, list_of_begin_end_block_pointer, E = E)
+            # print(f"LINK DIRECT ELEMENTS  {list_elements_LinkDirect} SB  {list_subblocks_LinkDirect} ")  
+            if traza:
+                if g_verbose == VERBOSE_TOTAL:
+                    print_f(f"{FORMATEO}ELEMENTS: LINK DIRECT {list_elements_LinkDirect} SB {list_subblocks_LinkDirect}", filename_traza)
+                else:
+                    print_f(f"{FORMATEO}ELEMENTS: LINK DIRECT SB {list_subblocks_LinkDirect}", filename_traza)
                     
-                    if not element_list[index]["L"] == 2: # si es un L == 2 no seguimos procesando
-                        print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT (Before) MANDAMOS EL INDEX {index}", filename_traza)                   
-                        l_registro = registro.copy()                  
-                        # index = l_list_elements[0]
-                        registro, list_of_SB = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, l_processed_SB = processed_SB, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza, search_method = SEARCH_METHOD_LINKDIRECT, contador = contador) 
-                        
-                        # incrementamos lo que nos llega a nuestro registro original
-                        for indice in registro:
-                            if not indice in l_registro:
-                                l_registro.append(indice)
-                        registro = l_registro.copy()
-                        
-                        # registro = copia_local_registro.copy()           
-    
+            # los añado al registro, evitando duplicados
+            if len(list_elements_LinkDirect)>0:
+                index = min(list_elements_LinkDirect) # al poder estar desordenadas, cojo el elemento con menor valor (el primero!)
+                
+                for i in list_elements_LinkDirect:
+                    if not i in registro:
+                        registro.append(i)
+        
+        # XXX: 202006.001 añadido para arreglar columnas vacías en CSPFacturacion    
+            copia_local_registro = registro.copy()
+            if len(list_subblocks_LinkDirect)>0:
+         
+                for i in list_subblocks_LinkDirect:
+        # XXX: 202006.001 si el elemento que voy a enviar tiene el mismo subbloque al que estoy estudiando, no lo envío, porque genera un bucle infinito            
+                    if not i == SB:            
+        # 202006.001 si el elemento que voy a enviar tiene el mismo subbloque al que estoy estudiando, no lo envío, porque genera un bucle infinito            
+                        # consigo sus elementos y opero sólo con el primero (el resto comparten todos la misma información)
+                        l1_list_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block = B, subblock = i)
+                        index = min(l1_list_elements) # al poder estar desordenadas, cojo el elemento con menor valor (el primero!)
                         if traza:
                             l_subblock = []
                             for l in registro:
                                 l_SB = element_list[l]["SB"]
                                 if not l_SB in l_subblock:
                                     l_subblock.append(l_SB)                    
-                            if g_verbose == VERBOSE_TOTAL:                                       
-                                print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT (After) REGISTRO TIENE AHORA {registro} SB [{l_subblock}]", filename_traza)
+                            if g_verbose == VERBOSE_TOTAL:                                
+                                print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT REGISTRO TIENE AHORA {registro} SB [{l_subblock}]", filename_traza)
                             else:
-                                print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT (After) REGISTRO TIENE AHORA SB [{l_subblock}]", filename_traza)
+                                print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT REGISTRO TIENE AHORA SB [{l_subblock}]", filename_traza)
+                        
+                        if not element_list[index]["L"] == 2: # si es un L == 2 no seguimos procesando
+                            if traza:
+                                if g_verbose == VERBOSE_TOTAL:                                
+                                    print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT (Before) MANDAMOS EL INDEX {index}", filename_traza)                   
+                                else:
+                                    print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT (Before) MANDAMOS EL INDEX {index}", filename_traza)                   
+                                
+                            l_registro = registro.copy()                  
+                            # index = l_list_elements[0]
+                            registro = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, l_processed_SB = processed_SB, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza, search_method = SEARCH_METHOD_LINKDIRECT, contador = contador) 
+                            
+                            # incrementamos lo que nos llega a nuestro registro original
+                            for indice in registro:
+                                if not indice in l_registro:
+                                    l_registro.append(indice)
+                            registro = l_registro.copy()
+                            
+                            # registro = copia_local_registro.copy()           
+        
+                            if traza:
+                                l_subblock = []
+                                for l in registro:
+                                    l_SB = element_list[l]["SB"]
+                                    if not l_SB in l_subblock:
+                                        l_subblock.append(l_SB)                    
+                                if g_verbose == VERBOSE_TOTAL:                                       
+                                    print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT (After) REGISTRO TIENE AHORA {registro} SB [{l_subblock}]", filename_traza)
+                                else:
+                                    print_f(f"{FORMATEO}ELEMENTS: LINKDIRECT (After) REGISTRO TIENE AHORA SB [{l_subblock}]", filename_traza)
                                 
                             
             if search_method == SEARCH_METHOD_LINKDIRECT: # si sólo queremos aumentar el registro, devolvemos inmediatamente la información
@@ -2502,7 +2381,7 @@ def createReg(element_list,
                         print_f(f"{FORMATEO}ELEMENTS: LF SAME LEVEL (Before) MANDAMOS EL INDEX {index}", filename_traza)
         
                     # index = l_list_elements[0]
-                    registro, list_of_SB = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, l_processed_SB = processed_SB, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza, search_method = SEARCH_METHOD_TOTAL, contador = contador) 
+                    registro = createReg(element_list, list_of_begin_end_block_pointer, index, l_registro = registro, l_processed_SB = processed_SB, formateo = FORMATEO, traza = traza, calledAsRecursive = True, filename_traza = filename_traza, search_method = SEARCH_METHOD_TOTAL, contador = contador) 
                     registro = copia_local_registro.copy()           
 
                     if traza:
@@ -2543,7 +2422,7 @@ def createReg(element_list,
             LIST_REGISTROS.append(registro.copy())
 
     
-    return LIST_REGISTROS.copy(), list_processed_subblocks # esta última lista normalmente irá en vacío. Sólo se llena cuando un Bloque sólo tiene registro de L == 2, y lo devolvemos para que no siga pidiendo SB y duplique registros
+    return LIST_REGISTROS.copy()
 
 
 # =============================================================================
@@ -2617,13 +2496,14 @@ def getColumnsList(columns_list):
     return list(list_of_columns.keys())
 
 # --- DF ----------------------------------------------------------------------
-
+name_file = ""
 # =============================================================================
 # Creamos un DF con la información enviada (JSONFlatten avanzado...)
 # =============================================================================
 def createDFFromLeafs(element_list, df_columns, list_of_begin_end_block_pointer, traza = False, filename_traza = "kk.txt"):
     global LIST_REGISTROS
     global g_verbose
+    global name_file
     if traza:
         print_f(f"\n\n\n******************* {datetime.datetime.now()} *********************************************************\n\n", filename_traza, initializeFile=True)            
     column_to_ignore = list(EMPTY_DICT.keys())[0]
@@ -2651,58 +2531,59 @@ def createDFFromLeafs(element_list, df_columns, list_of_begin_end_block_pointer,
     list_processed_subblocks = {}
     for block in range(0, len(subblock_leaf_list)):
         for subblock in subblock_leaf_list[block]:
-            if not subblock in list_processed_subblocks:
-                l_list_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block, subblock)
-                # cojo el primer elemento de todos los que comparten el subblock
-                index = l_list_elements[0]
+            # if not subblock in list_processed_subblocks: #» si no hemos procesado el subblock
+            l_list_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block, subblock)
+            # cojo el primer elemento de todos los que comparten el subblock
+            index = l_list_elements[0]
+            if traza:
+                print_f(f"*******************************************************************************************", filename_traza)            
+                print_f(f"createDFFromLeafs {name_file} TRABAJAMOS EL ELEMENTO: {index}", filename_traza)
+                print_f(f"*******************************************************************************************", filename_traza)            
+            
+           
+            # vaciamos la lista acumulada de registros
+            LIST_REGISTROS.clear()
+            # LIST_REGISTROS, list_processed_subblocks = createReg(element_list, list_of_begin_end_block_pointer, index, l_processed_SB = [], traza = traza, calledAsRecursive = False, filename_traza = filename_traza, search_method = SEARCH_METHOD_TOTAL)
+            LIST_REGISTROS = createReg(element_list, list_of_begin_end_block_pointer, index, l_processed_SB = [], traza = traza, calledAsRecursive = False, filename_traza = filename_traza, search_method = SEARCH_METHOD_TOTAL)
+            
+            for registro in LIST_REGISTROS:
+            
                 if traza:
                     print_f(f"*******************************************************************************************", filename_traza)            
-                    print_f(f"createDFFromLeafs TRABAJAMOS EL ELEMENTO: {index}", filename_traza)
-                    print_f(f"*******************************************************************************************", filename_traza)            
-                
-               
-                # vaciamos la lista acumulada de registros
-                LIST_REGISTROS.clear()
-                LIST_REGISTROS, list_processed_subblocks = createReg(element_list, list_of_begin_end_block_pointer, index, l_processed_SB = [], traza = traza, calledAsRecursive = False, filename_traza = filename_traza, search_method = SEARCH_METHOD_TOTAL)
-                
-                for registro in LIST_REGISTROS:
-                
-                    if traza:
-                        print_f(f"*******************************************************************************************", filename_traza)            
-                        print_f(f"createDFFromLeafs TOTAL ELEMENTS-REGISTRO: {index} {registro}", filename_traza)
-                        t_SB = []
-                        for e in registro:
-                            if not element_list[e]["SB"] in t_SB:
-                                t_SB.append(element_list[e]["SB"])
-                        print_f(f"createDFFromLeafs TOTAL ELEMENTS-REGISTRO (SB): {index} {t_SB}", filename_traza)
-                        print_f(f"*******************************************************************************************", filename_traza)            
-                            
-                    
-                    
-                    
-                    
-                    list_of_elements = []
-                    for n in registro:
-                        e = element_list[n]
-                        list_of_elements.append(e)
-                    
-    # rastreamos el registro quitando el que tenga como columna una que esté como columna vacía
-                    list_of_elements = [] # contiene la lista de elementos limpia (al principio hacía un pop en registro, pero mofifica la lista a medida que la rastreamos y produce errores)
+                    print_f(f"createDFFromLeafs {name_file} TOTAL ELEMENTS-REGISTRO: {index} #{len(registro)} {registro}", filename_traza)
+                    t_SB = []
                     for e in registro:
-                        if column_to_ignore in element_list[e]["key"]:
-                            # print(f"ELIMINADO")
-                            # borramos el elemento
-                            continue
-                        else:
-                            list_of_elements.append(e)
-                                
-                    df_list.append(list_of_elements)
+                        if not element_list[e]["SB"] in t_SB:
+                            t_SB.append(element_list[e]["SB"])
+                    print_f(f"createDFFromLeafs {name_file} TOTAL ELEMENTS-REGISTRO (SB): {index} #{len(t_SB)} {t_SB}", filename_traza)
+                    print_f(f"*******************************************************************************************", filename_traza)            
+                        
+                
+                
+                
+                
+                list_of_elements = []
+                for n in registro:
+                    e = element_list[n]
+                    list_of_elements.append(e)
+                
+# rastreamos el registro quitando el que tenga como columna una que esté como columna vacía
+                list_of_elements = [] # contiene la lista de elementos limpia (al principio hacía un pop en registro, pero mofifica la lista a medida que la rastreamos y produce errores)
+                for e in registro:
+                    if column_to_ignore in element_list[e]["key"]:
+                        # print(f"ELIMINADO")
+                        # borramos el elemento
+                        continue
+                    else:
+                        list_of_elements.append(e)
+                            
+                df_list.append(list_of_elements)
             
             # # número de registros (filas)
             # len(df_list)
             # # número de columnas
         if traza:
-            print(f"createDFFromLeafs TOTAL FILAS: {len(df_list)}")
+            print(f"createDFFromLeafs {name_file} TOTAL FILAS: {len(df_list)}")
     contador = 0
     for registro in df_list:
             # creamos un df ordenado, con valores y columnas      
@@ -2730,11 +2611,11 @@ def createDFFromLeafs(element_list, df_columns, list_of_begin_end_block_pointer,
             contador += 1
             if g_verbose == VERBOSE_TOTAL or g_verbose == VERBOSE_REDUCED:
                 if not contador % 100:
-                    print(f"createDFFromLeafs REGS ADDED TO DATAFRAME {contador}")
+                    print(f"createDFFromLeafs {name_file} REGS ADDED TO DATAFRAME {contador}")
                 
             if traza:
                 print_f(f"*******************************************************************************************", filename_traza)            
-                print_f(f"createDFFromLeafs df_to_append: {df_to_append}", filename_traza)
+                print_f(f"createDFFromLeafs {name_file} df_to_append: {df_to_append}", filename_traza)
             
             df = df.append(df_to_append)
 
@@ -2744,7 +2625,7 @@ def createDFFromLeafs(element_list, df_columns, list_of_begin_end_block_pointer,
 
 
     if g_verbose == VERBOSE_TOTAL or g_verbose == VERBOSE_REDUCED:
-        print(f"createDFFromLeafs REGS ADDED TO DATAFRAME {contador}")    
+        print(f"createDFFromLeafs {name_file} REGS ADDED TO DATAFRAME {contador}")    
     return df
 
 
@@ -2799,6 +2680,7 @@ SIZE_FDs_IN_BLOCK = 10000 # cuántos FDs admito por bloque?
 SIZE_BLOCKS = 10000 # cuántos bloques (registros de level == 2) admitimos?
 
 level_prefix = SIZE*[None] # guarda los prefijos por niveles de profundidad
+level_B_SB_prefix = SIZE*[None] # guarda los prefijos por niveles de profundidad
 level_code = SIZE*[None] # guarda los prefijos por niveles de profundidad
 level_dict = SIZE*[None] # ultimo diccionario creado en un nivel (en una lista)
 
@@ -2831,7 +2713,8 @@ def jsontodf(JSON, # JSON to flatten
     # filename = "simple_dict"
     # extended_info = True 
 # fin - sólo para depurar, quitar después    ********************************************************************************************************************************
-    
+    global advance_counter
+    advance_counter = -1 # para mostrar avance si verbose está, al menos, a VERBOSE_REDUCED en createReg
     global g_verbose
     g_verbose = verbose
     
@@ -2863,13 +2746,15 @@ def jsontodf(JSON, # JSON to flatten
     
     count_element_absolute = -1 # identificador único de elemento    
 
-    global level_prefix, level_code, level_dict
+    global level_prefix, level_code, level_dict, level_B_SB_prefix
     
     level_prefix.clear()
+    level_B_SB_prefix.clear()
     level_code.clear()
     level_dict.clear()
     
     level_prefix = SIZE*[None] # guarda los prefijos por niveles de profundidad
+    level_B_SB_prefix = SIZE*[None] # guarda los prefijos por niveles de profundidad    
     level_code = SIZE*[None] # guarda los prefijos por niveles de profundidad
     level_dict = SIZE*[None] # ultimo diccionario creado en un nivel (en una lista)    
     
@@ -2918,6 +2803,7 @@ def jsontodf(JSON, # JSON to flatten
     return df
 
 import datetime
+
 
 FILE = 1
 LISTA = 0
@@ -2974,7 +2860,7 @@ def depurar():
                  "path" : "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/G_SScores.json",
                  "type" : FILE            
                 },   
-         "G_SScores_MOD" : 
+         "G_SScores_MOD_NS" : 
                 {
                  "path" : "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/G_SScores_MOD.json",
                  "type" : FILE            
@@ -2989,14 +2875,14 @@ def depurar():
                  "path" : "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/M_RoleDefinitions_Aggregated.json",
                  "type" : FILE            
                 },
-         "M_RoleDefinitions_Aggregated_MOD" : 
+         "M_RoleDefinitions_Aggregated_MOD_NS" : 
                 {
                  "path" : "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/M_RoleDefinitions_Aggregated_MOD.json",
                  "type" : FILE            
                 },
         "configuration_machine" : 
                 {
-                 "path" : "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/configuration_machine.json",
+                 "path" : "configuration_machine.json",
                  "type" : FILE            
                 }     
                 
@@ -3043,20 +2929,29 @@ execution_report_json_filename = "EXECUTION_REPORT_{date}"
 this_script = "JSONFlattener v1.py"        
 
 
-def MontyPython():
+
+def _MontyPython():
 # XXX: MontyPython    
+    
+    global strategy
+    strategy = STRATEGY_NEW # estrategia a usar para los LINK_DIRECT
     import jsons as js
     global apano
+    global name_file
     
     apano = True # usa la antigua forma de codificar elementos y no añade elementos EMPTY
     reg_count = []
     # lista_ejecucion = ["G_SScores","G_users","M_RoleDefinitions_Aggregated"]
-    lista_ejecucion = ["G_SScores","G_users","M_RoleDefinitions_Aggregated","CSPFacturacion", "CSPProducts"]
+    lista_ejecucion = ["configuration_machine", "G_SScores","G_users","M_RoleDefinitions_Aggregated","CSPFacturacion", "CSPProducts"]
     # lista_ejecucion = ["M_RoleDefinitions_Aggregated"]    
     
     # lista_ejecucion = ["configuration_machine"]
-    # lista_ejecucion = ["G_users"]
-    
+    # lista_ejecucion = ["G_SScores"]
+    # lista_ejecucion = ["G_SScores_MOD_NS"]
+    # lista_ejecucion = ["G_users"]    
+    # lista_ejecucion = ["M_RoleDefinitions_Aggregated_MOD_NS"]    
+    # lista_ejecucion = ["CSPFacturacion"]    
+    # lista_ejecucion = ["CSPProducts"]    
 # G_SScores    
 # G_users
 # M_RoleDefinitions_Aggregated
@@ -3067,7 +2962,7 @@ def MontyPython():
     global g_verbose
     g_verbose = VERBOSE_REDUCED
     
-    extended_info = False
+    extended_info = True
     
     mensaje = f"ejecutado con extended_info {extended_info}\n"
     reg_count.append(mensaje)    
@@ -3088,10 +2983,19 @@ def MontyPython():
             _start = datetime.datetime.now()
             
             JSON = fromfile
+            
+            # import json
+            # JSON = json.dumps(slack)
+            
             print(len(JSON))
+            
+# df = pd.json_normalize(JSON)
+            
+            name_file = filename
             df = jsontodf(JSON, 
                           extended_info = extended_info, # escribe en disco un ficherito con la estructura de los elementos que ha encontrado
-                          filename = filename
+                          filename = filename,
+                          verbose = VERBOSE_REDUCED
                           )
 
             _end = datetime.datetime.now()    

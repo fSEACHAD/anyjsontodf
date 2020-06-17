@@ -2715,6 +2715,8 @@ def jsontodf(JSON, # JSON to flatten
     # filename = "simple_dict"
     # extended_info = True 
 # fin - sólo para depurar, quitar después    ********************************************************************************************************************************
+    global strategy
+    strategy = STRATEGY_NEW # estrategia a usar para los LINK_DIRECT    
     global advance_counter
     advance_counter = -1 # para mostrar avance si verbose está, al menos, a VERBOSE_REDUCED en createReg
     global g_verbose
@@ -2943,11 +2945,12 @@ def _MontyPython():
     
     apano = True # usa la antigua forma de codificar elementos y no añade elementos EMPTY
     reg_count = []
-    # lista_ejecucion = ["G_SScores","G_users","M_RoleDefinitions_Aggregated"]
-    lista_ejecucion = ["configuration_machine", "G_SScores","G_users","M_RoleDefinitions_Aggregated","CSPFacturacion", "CSPProducts"]
-    # lista_ejecucion = ["M_RoleDefinitions_Aggregated"]    
-    
-    # lista_ejecucion = ["configuration_machine"]
+
+    # a testear
+    # lista_ejecucion = ["configuration_machine", "G_SScores","G_users","M_RoleDefinitions_Aggregated","CSPFacturacion", "CSPProducts"]
+
+    # pruebas unitarias
+    lista_ejecucion = ["configuration_machine"]
     # lista_ejecucion = ["G_SScores"]
     # lista_ejecucion = ["G_SScores_MOD_NS"]
     # lista_ejecucion = ["G_users"]    
@@ -2964,7 +2967,7 @@ def _MontyPython():
     global g_verbose
     g_verbose = VERBOSE_REDUCED
     
-    extended_info = True
+    extended_info = False
     
     mensaje = f"ejecutado con extended_info {extended_info}\n"
     reg_count.append(mensaje)    

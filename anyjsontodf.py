@@ -740,14 +740,14 @@ def markFinalLEAVES(element_list, list_of_begin_end_block_pointer):
     # para ello rastreo todos los elementos y me quedo con el último que aparece
     # FIXME: Cambiar, dentro de la función max_level_per_block, que llame a getMaxLevelPerBlock que es más limpia
     list_leaf_level_per_block, list_last_LCID_per_block = max_level_per_block(element_list, list_of_begin_end_block_pointer)  
-    # print(f" elemento con último level_4 por bloque {list_leaf_level_per_block}  LCID {list_last_LCID_per_block}")
+    # print(f" elemento con último level por bloque {list_leaf_level_per_block}  LCID {list_last_LCID_per_block}")
     
-    # del elemento conseguido, busco todos los elementos que estén a su nivel (es decir, level 4 y que tengan su mismo LCID)
+    # del elemento conseguido, busco todos los elementos que estén a su nivel (es decir, level 4 o level 2 si no hay level 4 y que tengan su mismo LCID)
     list_possible_elements = getElementsLevel4FinalLeaves(element_list, list_of_begin_end_block_pointer, list_leaf_level_per_block, list_last_LCID_per_block)  
-    # print(f"todos los level_4 posibles para FLF {list_possible_elements}")
+    # print(f"todos los level posibles para FLF {list_possible_elements}")
     # list_possible_elements = list_leaf_level_per_block
     
-    # ahora tengo todos los level_4 dónde buscar su máxima profundidad, busco su máximo nivel de profundidad (realmente pueden ser diversos elementos), ese máximo nivel de profundidad me dará las FDF
+    # ahora tengo todos los level_4 o level 2 dónde buscar su máxima profundidad, busco su máximo nivel de profundidad (realmente pueden ser diversos elementos), ese máximo nivel de profundidad me dará las FDF
     list_final_FLF, list_elements_max_deep, list_LCID_max_deep_per_block = getMaxDeepLevelOfLevel4(element_list, list_of_begin_end_block_pointer, list_possible_elements)
     # print(f"{list_final_FLF} {list_elements_max_deep} {list_LCID_max_deep_per_block}")  
 
@@ -815,15 +815,19 @@ def markFinalFLFs(element_list, list_of_begin_end_block_pointer, list_elements_m
             deep = element["PBSB"]
             LCID = element["LCID"]
             L = element["L"]
+            B = element["B"]
             # ahora tengo que buscar, dentro del bloque, todos los elementos que coincidan
-            list_of_FLF_subblocks = getAllElementsByDepth(element_list, list_of_begin_end_block_pointer, deep, LCID, L)
+            list_of_FLF_subblocks = getAllElementsByDepth(element_list, list_of_begin_end_block_pointer, block, deep, LCID, L)
+            # print(f"markFinalFLFs list_of_SB {list_of_FLF_subblocks}")
             for subblock in list_of_FLF_subblocks:
 # 20200615 - configuration_machine devuelve 36 registros en lugar de 18                
                 for x in subblock: # puede devolver varios subbloques
                     # obtengo todos los elementos de cada subblock
                     list_of_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block, x)
+                    # print(f"markFinalFLFs elements in SB {x} -> {list_of_elements}")
                     # marco todos los elementos del subblock como FLF
                     for e in list_of_elements:
+                        # print(f"MarkFinalFLFs element {e}")
                         element_list[e]["FLF"] = MARK_TERMINAL_LEAF
 
 
@@ -833,7 +837,7 @@ def markFinalFLFs(element_list, list_of_begin_end_block_pointer, list_elements_m
 # XXX: está comprobado para profundidades de dos niveles, no lo he comprobado para profundidades de más niveles, puede dar error 
 # para más niveles probando que tienen que tener el mismo #deep y comenzar con el mismo SB                  
 # =============================================================================
-def getAllElementsByDepth(element_list, list_of_begin_end_block_pointer, deep, LCID, L):
+def getAllElementsByDepth_OLD(element_list, list_of_begin_end_block_pointer, deep, LCID, L):
     list_of_list_of_SB = []
     list_SB = []
     
@@ -862,7 +866,57 @@ def getAllElementsByDepth(element_list, list_of_begin_end_block_pointer, deep, L
                         list_SB.append(SB)
         list_of_list_of_SB.append(list_SB.copy())
     return list_of_list_of_SB
-                
+             
+def getAllElementsByDepth(element_list, list_of_begin_end_block_pointer, block, deep, LCID, L):
+    list_of_list_of_SB = []
+    list_SB = []
+    
+    begin = list_of_begin_end_block_pointer[block][0]
+    end = list_of_begin_end_block_pointer[block][1]+1
+    
+    list_SB.clear()
+
+
+    # si no hay nivel superior a 2, todos los SB se cogen
+    niveles_superiores = False
+    for i in range(begin, end):
+        element = element_list[i] 
+        if element["L"] > 2:
+            niveles_superiores = True
+            break
+    
+    # si hay niveles superiores a 2...
+    if niveles_superiores == True:
+        for i in range(begin, end):    
+            element = element_list[i]   
+            l_deep = element["PBSB"]
+            l_LCID = element["LCID"]
+            l_L = element["L"]
+
+            
+            if len(l_deep)!=0 and len(deep)!=0: # si no hay l_deep o deep para comparar nos vamos
+                # print(f"{len(l_deep)} {len(deep)} {l_deep[0]} {deep[0]}")                
+                # le quitamos 2 para quedarnos con el identificador de profundidad de lista en el nivel que nos interesa (ahí es dónde estará cualquier FLF)
+                if len(l_deep) == len(deep) and l_deep[0] == deep[0] and l_LCID == LCID and l_L == L: # esto hace que configuration_machine funcione correctamente (tiene varios FLF que pueden estar seguidos)
+                # if len(l_deep) == len(deep) and l_deep[0:len(l_deep)-1] == deep[0:len(deep)-2] and l_CID == LCID: # esto hace que configuration_machine funcione correctamente (tiene varios FLF que pueden estar seguidos)
+                # if len(l_deep) == len(deep) and l_deep[:-1] == deep[:-1]: # esto hace que G_SScores funcione correctamente (tiene varios FLF que pueden estar seguidos)
+                    
+                    SB = element["SB"]
+                    if not SB in list_SB:
+                        list_SB.append(SB)
+                        
+    # si sólo hay niveles 2, me quedo con todos los subbloques
+    if niveles_superiores == False:                        
+        for i in range(begin, end):    
+            element = element_list[i] 
+            SB = element["SB"]
+            if not SB in list_SB:
+                list_SB.append(SB)
+                        
+    list_of_list_of_SB.append(list_SB.copy())
+    return list_of_list_of_SB
+
+   
 # =============================================================================
 # DEEPEST
 # buscamos los elementos deepest in the ocean!
@@ -931,7 +985,7 @@ def _tests():
     print(f"LEVELS for FLF {list_final_FLF} ELEMENTS FOR FLF {list_elements_max_deep} LCID FOR START LOOKING {list_LCID_max_deep_per_block}")  
       
     # ESTRATEGIA para un elemento concreto
-    index = 42
+    index = 0
     E = index
     result = isLF(element_list, list_of_begin_end_block_pointer, list_max_level_per_block, E = index)
     print(f"ELEMENTS ES LF? {index} {result}")      
@@ -1477,8 +1531,8 @@ def max_level_per_block(element_list, list_of_begin_end_block_pointer):
         max_level = -1
         max_LCID = -1
         
-        for i in range(begin, end):
-            element = element_list[i]
+        # for i in range(begin, end):
+        #     element = element_list[i]
             # if element["L"] > max_level:
             #     max_level = element["L"]
                 
@@ -1491,7 +1545,7 @@ def max_level_per_block(element_list, list_of_begin_end_block_pointer):
    
         # si no ha habido ningún level 4 estamos en un JSON sólo con diccionarios, con lo que me quedo con el primer elemento, que será level 2
         if last_level_4 == -1:
-            last_level_4 = 0
+            last_level_4 = begin
     
         # me quedo con su LCID
         LCID = element_list[last_level_4]["LCID"]       
@@ -1617,30 +1671,47 @@ def getElementsLevel4FinalLeaves(element_list, list_of_begin_end_block_pointer, 
         begin = list_of_begin_end_block_pointer[n][0]
         end = list_of_begin_end_block_pointer[n][1]+1
 
-        # consigo una lista con los elementos que tienen posibilidad de tener FLF
+# 20200625 - si no hay niveles superiores a 2, cojo todos los elementos        
+        buscar_niveles_4 = False
         for i in range(begin, end):
             element = element_list[i]
-            coger = True
-            if element["L"] == 4 and element["LCID"] == list_last_LCID_per_block[n][0]:
-# 20200615 - configuration_machine no detecta correctamente las LF y cree que todo son FLF                
-                # antes de añadirla tengo que averiguar si realmente puede ser una FLF (es decir, que no es un LINK DIRECT de algún elemento)
-                l_B_SB = element["PBSB"]
-                # print(f"posible element {i} l_B_SB {l_B_SB}")
-                # si encuentro que esta lista está contenida en otra, es que es LINK DIRECT, con lo que no podré añadirlo
-                for x in range(begin, end):
-                    o_element = element_list[x]
-                    o_l_B_SB = o_element["PBSB"]
-                    # print(f"\tcomparo con {i} o_l_B_SB {o_l_B_SB} resultado {compare_pre_lists(l_B_SB, o_l_B_SB)}")
+            L = element["L"]
+            if L > 2:
+                buscar_niveles_4 = True
+                break
 
-                    if compare_pre_lists(l_B_SB, o_l_B_SB):
-                        # print(f"\t\t coger=False")
-                        coger = False
-                        break
-                if coger == True:
-                    # print(f"\t\t incluimos element {i}")
-# 20200615 - fin                    
-                    list_elements.append(i)
+# 20200625
+
+        if buscar_niveles_4 == True:
+            # consigo una lista con los elementos que tienen posibilidad de tener FLF
+            for i in range(begin, end):
+                element = element_list[i]
+                coger = True
+                if element["L"] == 4 and element["LCID"] == list_last_LCID_per_block[n][0]:
+# 20200615 - configuration_machine no detecta correctamente las LF y cree que todo son FLF                
+                    # antes de añadirla tengo que averiguar si realmente puede ser una FLF (es decir, que no es un LINK DIRECT de algún elemento)
+                    l_B_SB = element["PBSB"]
+                    # print(f"posible element {i} l_B_SB {l_B_SB}")
+                    # si encuentro que esta lista está contenida en otra, es que es LINK DIRECT, con lo que no podré añadirlo
+                    for x in range(begin, end):
+                        o_element = element_list[x]
+                        o_l_B_SB = o_element["PBSB"]
+                        # print(f"\tcomparo con {i} o_l_B_SB {o_l_B_SB} resultado {compare_pre_lists(l_B_SB, o_l_B_SB)}")
     
+                        if compare_pre_lists(l_B_SB, o_l_B_SB):
+                            # print(f"\t\t coger=False")
+                            coger = False
+                            break
+                    if coger == True:
+                        # print(f"\t\t incluimos element {i}")
+# 20200615 - fin                    
+                        list_elements.append(i)
+
+        # en este bloque sólo tenemos niveles 2
+        if buscar_niveles_4 == False:
+            for i in range(begin, end):            
+                list_elements.append(i)
+
         list_possible_elements.append(list_elements)
     return list_possible_elements
    
@@ -2225,8 +2296,7 @@ def createReg(element_list,
     else:
         processed_SB.append(SB) # notifico que este SB lo procesamos
  
-    if L == 2:
-        return registro    
+  
     
 # 202006.001 CSP Facturación devuelve columnas vacías
 
@@ -2242,6 +2312,10 @@ def createReg(element_list,
     for i in list_SB_FLF:
         if not i in registro:
             registro.append(i)    
+
+    if L == 2:
+        LIST_REGISTROS.append(registro.copy())
+        return LIST_REGISTROS.copy()        
 
 # ***********************************************************
 # LINK DIRECT: 
@@ -2704,7 +2778,7 @@ list_max_level_per_block = []
 # =============================================================================
 def jsontodf(JSON, # JSON to flatten
              extended_info = False, # si queremos grabar en un fichero TXT toda la info de elementos
-             filename = "", # en ese caso, nombre del fichero dónde grabar la info
+             filename = "result.txt", # en ese caso, nombre del fichero dónde grabar la info
              verbose = None
              ):
 # FIXME: hay que meter un BOOLEAN de inicializacion para que columns_list se inicialice en la función JSONtoDF
@@ -2888,8 +2962,18 @@ def depurar():
                 {
                  "path" : "configuration_machine.json",
                  "type" : FILE            
-                }     
-                
+                },
+        "Reseller_Subscriptions" : 
+                {
+                 "path" : "O365_Reseller_CspSubscriptions_ResellerSubs.json",
+                 "type" : FILE            
+                }                 ,
+        "Reseller_Subscriptions_MOD" : 
+                {
+                 "path" : "O365_Reseller_CspSubscriptions_ResellerSubs_MOD.json",
+                 "type" : FILE            
+                }                 
+                                
         }
 
     
@@ -2948,15 +3032,16 @@ def _MontyPython():
 
     # a testear
     # lista_ejecucion = ["configuration_machine", "G_SScores","G_users","M_RoleDefinitions_Aggregated","CSPFacturacion", "CSPProducts"]
-
+    lista_ejecucion = ["CSPFacturacion"]
     # pruebas unitarias
-    lista_ejecucion = ["configuration_machine"]
+    # lista_ejecucion = ["configuration_machine"]
     # lista_ejecucion = ["G_SScores"]
     # lista_ejecucion = ["G_SScores_MOD_NS"]
     # lista_ejecucion = ["G_users"]    
     # lista_ejecucion = ["M_RoleDefinitions_Aggregated_MOD_NS"]    
     # lista_ejecucion = ["CSPFacturacion"]    
-    # lista_ejecucion = ["CSPProducts"]    
+    # lista_ejecucion = ["CSPProducts"]   
+    # lista_ejecucion = ["Reseller_Subscriptions_MOD"]  
 # G_SScores    
 # G_users
 # M_RoleDefinitions_Aggregated
@@ -2967,7 +3052,7 @@ def _MontyPython():
     global g_verbose
     g_verbose = VERBOSE_REDUCED
     
-    extended_info = False
+    extended_info = True
     
     mensaje = f"ejecutado con extended_info {extended_info}\n"
     reg_count.append(mensaje)    
@@ -2982,7 +3067,7 @@ def _MontyPython():
     
         if fromfile != None:
         
-        # ejecución            
+            # ejecución            
             # lo envío a la función para hacerle el flatten
             import datetime
             _start = datetime.datetime.now()
@@ -2994,7 +3079,7 @@ def _MontyPython():
             
             print(len(JSON))
             
-# df = pd.json_normalize(JSON)
+
             
             name_file = filename
             df = jsontodf(JSON, 

@@ -86,46 +86,60 @@ access = {
 # Permite tener varias versiones de librerías y de scripts cohabitando en varios espacios de computación, evitando PATHS
 # El fichero miniconfig debe existir en el directorio de ejecución de la librería
 # =============================================================================
-def cargaInicial():
+# def cargaInicial():
     
-    from path import Path
-    global access
-    import json
-    import os
+#     from path import Path
+#     global access
+#     import json
+#     import os
     
-    global access
+#     global access
     
-    # lectura y carga de miniconfig.json
-    miniconfig = {}
-    filename = "miniconfig.json"
+#     # lectura y carga de miniconfig.json
+#     miniconfig = {}
+#     filename = "miniconfig.json"
     
-    try:
-        with open(filename) as json_file:
-            miniconfig = json.load(json_file)
-    except Exception as e:
-        print( f"Error de apertura del fichero de configuración {filename} - error {e}")    
-    else:
-        json_file.close()
+#     try:
+#         with open(filename) as json_file:
+#             miniconfig = json.load(json_file)
+#     except Exception as e:
+#         print( f"Error de apertura del fichero de configuración {filename} - error {e}")    
+#     else:
+#         json_file.close()
  
-    # es el primer elemento del json (que al final es una lista de diccionarios)
-    miniconfig = miniconfig[0]
+#     # es el primer elemento del json (que al final es una lista de diccionarios)
+#     miniconfig = miniconfig[0]
     
-    dirpath = os.getcwd()
-    access["CM_work_folder"] = dirpath 
+#     dirpath = os.getcwd()
+#     access["CM_work_folder"] = dirpath 
 
-    # lectura y asignación de claves
-    try:    
-        access["CM_path_to_libraries"] = miniconfig["CNF_path_to_libraries"]
-        access["CM_reports_folder"] = miniconfig["CNF_reports_folder"]
-        access["CM_structs_folder"] = miniconfig["CNF_structs_folder"]
-        access["CM_log_folder"] = miniconfig["CNF_log_folder"]
-        access["CM_config_folder"] = miniconfig["CNF_config_folder"]
-    except Exception as e:
-        print( f"Error de asignación de claves de miniconfig  - error {e}")    
+#     # lectura y asignación de claves
+#     try:    
+#         access["CM_path_to_libraries"] = miniconfig["CM_path_to_libraries"]
+#         access["CM_reports_folder"] = miniconfig["CM_reports_folder"]
+#         access["CM_structs_folder"] = miniconfig["CM_structs_folder"]
+#         access["CM_log_folder"] = miniconfig["CM_log_folder"]
+#         access["CM_config_folder"] = miniconfig["CM_config_folder"]
+#     except Exception as e:
+#         print( f"Error de asignación de claves de miniconfig  - error {e}")    
     
-    import sys
-    # para buscar las librerías
-    sys.path.append(access["CM_path_to_libraries"])
+#     import sys
+#     # para buscar las librerías
+#     sys.path.append(access["CM_path_to_libraries"])
+
+
+# ---------------------------------------------
+# CONFIGURACION INICIAL
+# ---------------------------------------------
+access = {
+        #"CM_miniconfig_base" : "" # directorio de trabajo
+        }
+
+import IPL
+access = IPL.getAccess()
+# ---------------------------------------------
+# ---------------------------------------------
+
     
 # cargaInicial() 
 
@@ -781,25 +795,25 @@ def markFinalFLFs_NEW(element_list, list_of_begin_end_block_pointer, list_final_
                 for e in list_of_elements:
                     element_list[e]["FLF"] = MARK_TERMINAL_LEAF
 
-def markFinalFLFs_OLD(element_list, list_of_begin_end_block_pointer, list_elements_max_deep ):
-    for block in range(0,len(list_of_begin_end_block_pointer)):
-        n = block
-        begin = list_of_begin_end_block_pointer[n][0]
-        end = list_of_begin_end_block_pointer[n][1]+1
+# def markFinalFLFs_OLD(element_list, list_of_begin_end_block_pointer, list_elements_max_deep ):
+#     for block in range(0,len(list_of_begin_end_block_pointer)):
+#         n = block
+#         begin = list_of_begin_end_block_pointer[n][0]
+#         end = list_of_begin_end_block_pointer[n][1]+1
 
-        for i in list_elements_max_deep[block]:
-            element = element_list[i]
-            L = element["L"]
-            SB = element["SB"]
-            LCID = element["LCID"]
-            # ahora tengo que buscar, dentro del bloque, todos los elementos que coincidan
-            list_of_FLF_subblocks = getAllElementsBy_B_L_LCID(element_list, list_of_begin_end_block_pointer, block, L, LCID)
-            for subblock in list_of_FLF_subblocks:
-                # obtengo todos los elementos de cada subblock
-                list_of_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block, subblock)
-                # marco todos los elementos del subblock como FLF
-                for e in list_of_elements:
-                    element_list[e]["FLF"] = MARK_TERMINAL_LEAF
+#         for i in list_elements_max_deep[block]:
+#             element = element_list[i]
+#             L = element["L"]
+#             SB = element["SB"]
+#             LCID = element["LCID"]
+#             # ahora tengo que buscar, dentro del bloque, todos los elementos que coincidan
+#             list_of_FLF_subblocks = getAllElementsBy_B_L_LCID(element_list, list_of_begin_end_block_pointer, block, L, LCID)
+#             for subblock in list_of_FLF_subblocks:
+#                 # obtengo todos los elementos de cada subblock
+#                 list_of_elements = getSubBlockElementsBySubblock(element_list, list_of_begin_end_block_pointer, block, subblock)
+#                 # marco todos los elementos del subblock como FLF
+#                 for e in list_of_elements:
+#                     element_list[e]["FLF"] = MARK_TERMINAL_LEAF
 
 # =============================================================================
 # Asumimos que los elementos que tengan tantos B_SB como los de máximo nivel que nos llegan, serán las FLF
@@ -837,35 +851,35 @@ def markFinalFLFs(element_list, list_of_begin_end_block_pointer, list_elements_m
 # XXX: está comprobado para profundidades de dos niveles, no lo he comprobado para profundidades de más niveles, puede dar error 
 # para más niveles probando que tienen que tener el mismo #deep y comenzar con el mismo SB                  
 # =============================================================================
-def getAllElementsByDepth_OLD(element_list, list_of_begin_end_block_pointer, deep, LCID, L):
-    list_of_list_of_SB = []
-    list_SB = []
+# def getAllElementsByDepth_OLD(element_list, list_of_begin_end_block_pointer, deep, LCID, L):
+#     list_of_list_of_SB = []
+#     list_SB = []
     
-    for block in range(0,len(list_of_begin_end_block_pointer)):
-        n = block
-        begin = list_of_begin_end_block_pointer[n][0]
-        end = list_of_begin_end_block_pointer[n][1]+1
+#     for block in range(0,len(list_of_begin_end_block_pointer)):
+#         n = block
+#         begin = list_of_begin_end_block_pointer[n][0]
+#         end = list_of_begin_end_block_pointer[n][1]+1
         
-        list_SB.clear()
+#         list_SB.clear()
 
-        for i in range(begin, end):    
-            element = element_list[i]   
-            l_deep = element["PBSB"]
-            l_LCID = element["LCID"]
-            l_L = element["L"]
-            # print(f"{len(l_deep)} {len(deep)} {l_deep[0]} {deep[0]}")
+#         for i in range(begin, end):    
+#             element = element_list[i]   
+#             l_deep = element["PBSB"]
+#             l_LCID = element["LCID"]
+#             l_L = element["L"]
+#             # print(f"{len(l_deep)} {len(deep)} {l_deep[0]} {deep[0]}")
             
-            if len(l_deep)!=0 and len(deep)!=0: # si no hay l_deep o deep para comparar nos vamos
-                # le quitamos 2 para quedarnos con el identificador de profundidad de lista en el nivel que nos interesa (ahí es dónde estará cualquier FLF)
-                if len(l_deep) == len(deep) and l_deep[0] == deep[0] and l_LCID == LCID and l_L == L: # esto hace que configuration_machine funcione correctamente (tiene varios FLF que pueden estar seguidos)
-                # if len(l_deep) == len(deep) and l_deep[0:len(l_deep)-1] == deep[0:len(deep)-2] and l_CID == LCID: # esto hace que configuration_machine funcione correctamente (tiene varios FLF que pueden estar seguidos)
-                # if len(l_deep) == len(deep) and l_deep[:-1] == deep[:-1]: # esto hace que G_SScores funcione correctamente (tiene varios FLF que pueden estar seguidos)
+#             if len(l_deep)!=0 and len(deep)!=0: # si no hay l_deep o deep para comparar nos vamos
+#                 # le quitamos 2 para quedarnos con el identificador de profundidad de lista en el nivel que nos interesa (ahí es dónde estará cualquier FLF)
+#                 if len(l_deep) == len(deep) and l_deep[0] == deep[0] and l_LCID == LCID and l_L == L: # esto hace que configuration_machine funcione correctamente (tiene varios FLF que pueden estar seguidos)
+#                 # if len(l_deep) == len(deep) and l_deep[0:len(l_deep)-1] == deep[0:len(deep)-2] and l_CID == LCID: # esto hace que configuration_machine funcione correctamente (tiene varios FLF que pueden estar seguidos)
+#                 # if len(l_deep) == len(deep) and l_deep[:-1] == deep[:-1]: # esto hace que G_SScores funcione correctamente (tiene varios FLF que pueden estar seguidos)
                     
-                    SB = element["SB"]
-                    if not SB in list_SB:
-                        list_SB.append(SB)
-        list_of_list_of_SB.append(list_SB.copy())
-    return list_of_list_of_SB
+#                     SB = element["SB"]
+#                     if not SB in list_SB:
+#                         list_SB.append(SB)
+#         list_of_list_of_SB.append(list_SB.copy())
+#     return list_of_list_of_SB
              
 def getAllElementsByDepth(element_list, list_of_begin_end_block_pointer, block, deep, LCID, L):
     list_of_list_of_SB = []
@@ -983,9 +997,13 @@ def _tests():
     # ahora tengo todos los level_4 dónde buscar su máxima profundidad, busco su máximo nivel de profundidad (realmente pueden ser diversos elementos), ese máximo nivel de profundidad me dará las FDF
     list_final_FLF, list_elements_max_deep, list_LCID_max_deep_per_block = getMaxDeepLevelOfLevel4(element_list, list_of_begin_end_block_pointer, list_possible_elements)
     print(f"LEVELS for FLF {list_final_FLF} ELEMENTS FOR FLF {list_elements_max_deep} LCID FOR START LOOKING {list_LCID_max_deep_per_block}")  
-      
-    # ESTRATEGIA para un elemento concreto
-    index = 0
+
+    # -------------------------------------------------------------------------  
+    # -------------------------------------------------------------------------  
+    # ESTRATEGIA para construcción de registro desde un elemento concreto
+    # -------------------------------------------------------------------------  
+    # -------------------------------------------------------------------------  
+    index = 343
     E = index
     result = isLF(element_list, list_of_begin_end_block_pointer, list_max_level_per_block, E = index)
     print(f"ELEMENTS ES LF? {index} {result}")      
@@ -1011,11 +1029,11 @@ def _tests():
 
     # LF
     # buscmmos todos los elementos LF por debajo del elemento enviado y con LCID inferior 
-    # l_list_elements_same, l_ilst_subblocks_same, resultado = getLeafsBelowIndexSharingLCID(element_list, list_of_begin_end_block_pointer, E = index)     
-    # print(f"ELEMENTS ENLACE LF: SAME LEVEL {l_list_elements_same} SB {l_ilst_subblocks_same}")  
-    
-    l_list_elements_same, l_ilst_subblocks_same, resultado = getLFSameLevel(element_list, list_of_begin_end_block_pointer, E = index)     
+    l_list_elements_same, l_ilst_subblocks_same, resultado = getLeafsBelowIndexSharingLCID(element_list, list_of_begin_end_block_pointer, E = index)     
     print(f"ELEMENTS ENLACE LF: SAME LEVEL {l_list_elements_same} SB {l_ilst_subblocks_same}")  
+    
+    # l_list_elements_same, l_ilst_subblocks_same, resultado = getLFSameLevel(element_list, list_of_begin_end_block_pointer, E = index)     
+    # print(f"ELEMENTS ENLACE LF: SAME LEVEL {l_list_elements_same} SB {l_ilst_subblocks_same}")  
     
     
 
@@ -1313,8 +1331,20 @@ def getLeafsBelowIndexSharingLCID(element_list, list_of_begin_end_block_pointer,
             element = element_list[l]
             # OJO! si en el transcurso de la búsqueda me encuentro con otro FLF, paro porque me estoy metiendo en otro registro diferente (salvo que los SB sean contíguos)
             # FIXME: Cuidado, esto lo para cuando hay 2 FLF juntas!!!!!
-            if element["FLF"] == MARK_TERMINAL_LEAF:
+            
+            # 20200717 - si el FLF que me encuentro está al mismo PBSB no paro, porque el elemento que tengo que encontrar está después de esa zona de nuevos FLF
+            # if element["FLF"] == MARK_TERMINAL_LEAF:
+            #     break   
+            # ----> cambiado a: 
+            numero_elementos = int(((element["L"]-2)/2)-1)
+            if numero_elementos < 0:
+                numero_elementos = 0
+            elements_from_PBSB = element["PBSB"][:numero_elementos]
+            current_elements_from_PSBS = element_list[E]["PBSB"][:numero_elementos]
+            if element["FLF"] == MARK_TERMINAL_LEAF and elements_from_PBSB != current_elements_from_PSBS:
                 break            
+            # 20200717
+
             if element["LF"] == MARK_LEAF:
                 if element["LCID"] == LF_to_list:
                     list_of_LF.append(element["E"])
@@ -1324,6 +1354,13 @@ def getLeafsBelowIndexSharingLCID(element_list, list_of_begin_end_block_pointer,
            
     return list_of_LF, list_of_SB, resultado
 
+
+# lista_2 = [1,20,23,32,21]
+# lista_1 = [1,20,23,26,29]
+# lista_3 = [1,20,24,26,29]
+# element["PBSB"]
+# numero_elementos = int(((element["L"]-2)/2)-1)
+# element["PBSB"][:numero_elementos]
 
 
 # =============================================================================
@@ -2894,12 +2931,12 @@ def depurar():
     d = {
         "CSPFacturacion" : 
                 {
-                 "path" : "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/O365_CSPBillingReports_MonthlyBillingPerOrganization_CSPFacturacion.json",
+                 "path" : "O365_CSPBillingReports_MonthlyBillingPerOrganization_CSPFacturacion.json",
                  "type" : FILE            
                 },
         "CSPFacturacion_MOD" : 
                 {
-                 "path" : "D:/OneDrive - Seachad/03 - Clientes/SEIDOR/IPCOSELL/API_Calls_Microsoft_BORRAR/ChequearLGV/O365_CSPBillingReports_MonthlyBillingPerOrganization_CSPFacturacion_MOD.json",
+                 "path" : "D:/OneDrive - Seachad/SEIDOR/Temporal Reports Prueba FGV/O365_BillingReports_MonthlyBillingPerOrganization_ASYNC_CSPFacturacion_MOD.json",
                  "type" : FILE            
                 },                
         "CSPUsers" : 
@@ -3021,6 +3058,9 @@ this_script = "JSONFlattener v1.py"
 def _MontyPython():
 # XXX: MontyPython    
     
+    
+    # cargaInicial()
+    
     global strategy
     strategy = STRATEGY_NEW # estrategia a usar para los LINK_DIRECT
     import jsons as js
@@ -3032,12 +3072,12 @@ def _MontyPython():
 
     # a testear
     # lista_ejecucion = ["configuration_machine", "G_SScores","G_users","M_RoleDefinitions_Aggregated","CSPFacturacion", "CSPProducts"]
-    lista_ejecucion = ["CSPFacturacion"]
+    # lista_ejecucion = ["CSPFacturacion_MOD"]
     # pruebas unitarias
     # lista_ejecucion = ["configuration_machine"]
     # lista_ejecucion = ["G_SScores"]
     # lista_ejecucion = ["G_SScores_MOD_NS"]
-    # lista_ejecucion = ["G_users"]    
+    lista_ejecucion = ["G_users"]    
     # lista_ejecucion = ["M_RoleDefinitions_Aggregated_MOD_NS"]    
     # lista_ejecucion = ["CSPFacturacion"]    
     # lista_ejecucion = ["CSPProducts"]   
@@ -3052,11 +3092,12 @@ def _MontyPython():
     global g_verbose
     g_verbose = VERBOSE_REDUCED
     
-    extended_info = True
+    extended_info = False
     
     mensaje = f"ejecutado con extended_info {extended_info}\n"
     reg_count.append(mensaje)    
-    mensaje = f"ejecutado el {datetime.datetime.now()}\n"
+    from datetime import datetime
+    mensaje = f"ejecutado el {datetime.now()}\n"
     reg_count.append(mensaje)    
     
     for i in lista_ejecucion:
@@ -3107,7 +3148,7 @@ def _MontyPython():
 # =============================================================================
 #  FIN - DEBUG - quitar    
 # =============================================================================
-
+_MontyPython()
 
 
 
